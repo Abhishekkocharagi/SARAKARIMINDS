@@ -49,3 +49,5 @@
 
 ## Author
 Built with ❤️ for Karnataka Aspirants.
+
+# SARAKARIMINDS
