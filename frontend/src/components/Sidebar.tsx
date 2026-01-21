@@ -3,6 +3,7 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import DailyNewspaperSection from './DailyNewspaperSection';
 
 export default function Sidebar() {
     const { user } = useAuth();
@@ -53,6 +54,9 @@ export default function Sidebar() {
                     ))}
                 </div>
             </div>
+
+            {/* Daily Newspaper Section */}
+            <DailyNewspaperSection />
         </aside>
     );
 }

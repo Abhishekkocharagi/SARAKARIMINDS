@@ -29,6 +29,11 @@
   - [ ] Can like/react to posts
   - [ ] Can comment on posts
   - [ ] Exam news sidebar shows
+  - [ ] Daily Newspaper section shows in LEFT sidebar below My Exams
+  - [ ] Can view newspaper previews
+  - [ ] Can open newspaper viewer modal
+  - [ ] PDF viewer works for PDF newspapers
+  - [ ] Image viewer works for image newspapers
   
 - [ ] **Stories**
   - [ ] Can view stories
@@ -61,6 +66,14 @@
 - [ ] Can manage mentors
 - [ ] Can create exam news
 - [ ] Can manage ads
+- [ ] **Daily Newspaper Management**
+  - [ ] Can access Daily Newspaper admin panel
+  - [ ] Can add new newspaper (PDF/Image)
+  - [ ] Can edit existing newspapers
+  - [ ] Can delete newspapers
+  - [ ] Can toggle visibility (show/hide)
+  - [ ] Live preview works when adding/editing
+  - [ ] View count displays correctly
 
 ### 6. Error Handling
 - [ ] Helpful error messages show on failures

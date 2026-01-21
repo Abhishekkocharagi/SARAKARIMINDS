@@ -51,6 +51,7 @@ export default function AdminLayout({
         { name: 'Content', href: '/admin/content', icon: '📝' },
         { name: 'Ads', href: '/admin/ads', icon: '📢' },
         { name: 'Exam News', href: '/admin/exam-news', icon: '📰' },
+        { name: 'Daily Newspaper', href: '/admin/daily-newspaper', icon: '🗞️' },
     ];
 
     return (

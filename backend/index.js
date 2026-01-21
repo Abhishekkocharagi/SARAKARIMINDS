@@ -31,6 +31,7 @@ const startServer = async () => {
         app.use('/api/admin/ads', require('./src/routes/adRoutes'));
         app.use('/api/exam-news', require('./src/routes/examNewsRoutes'));
         app.use('/api/admin/exam-news', require('./src/routes/examNewsRoutes'));
+        app.use('/api/daily-newspapers', require('./src/routes/dailyNewspaperRoutes'));
 
         app.get('/', (req, res) => {
             res.send('SarkariMinds API is running...');
