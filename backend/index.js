@@ -17,6 +17,16 @@ const startServer = async () => {
         app.use(cors());
         app.use(express.json());
 
+        // Serve Static Files with PDF headers
+        const path = require('path');
+        app.use('/uploads', (req, res, next) => {
+            if (req.path.endsWith('.pdf')) {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', 'inline');
+            }
+            next();
+        }, express.static(path.join(__dirname, 'uploads')));
+
         // Routes
         app.use('/api/users', require('./src/routes/userRoutes'));
         app.use('/api/auth', require('./src/routes/authRoutes'));

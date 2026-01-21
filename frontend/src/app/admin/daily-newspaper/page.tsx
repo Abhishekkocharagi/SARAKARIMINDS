@@ -10,12 +10,12 @@ export default function AdminDailyNewspaperPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingNewspaper, setEditingNewspaper] = useState<any>(null);
     const [previewUrl, setPreviewUrl] = useState('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
         name: '',
         date: new Date().toISOString().split('T')[0],
-        fileUrl: '',
         fileType: 'pdf' as 'pdf' | 'image',
         thumbnailUrl: ''
     });
@@ -50,13 +50,19 @@ export default function AdminDailyNewspaperPage() {
 
             const method = editingNewspaper ? 'PUT' : 'POST';
 
+            const data = new FormData();
+            data.append('name', formData.name);
+            data.append('date', formData.date);
+            data.append('fileType', formData.fileType);
+            if (formData.thumbnailUrl) data.append('thumbnailUrl', formData.thumbnailUrl);
+            if (selectedFile) data.append('file', selectedFile);
+
             const res = await fetch(url, {
                 method,
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user?.token}`
                 },
-                body: JSON.stringify(formData)
+                body: data
             });
 
             if (res.ok) {
@@ -64,7 +70,8 @@ export default function AdminDailyNewspaperPage() {
                 handleCloseModal();
                 alert(editingNewspaper ? 'Newspaper updated successfully!' : 'Newspaper created successfully!');
             } else {
-                alert('Failed to save newspaper');
+                const errorData = await res.json();
+                alert(errorData.message || 'Failed to save newspaper');
             }
         } catch (error) {
             console.error('Error saving newspaper:', error);
@@ -111,7 +118,6 @@ export default function AdminDailyNewspaperPage() {
         setFormData({
             name: newspaper.name,
             date: new Date(newspaper.date).toISOString().split('T')[0],
-            fileUrl: newspaper.fileUrl,
             fileType: newspaper.fileType,
             thumbnailUrl: newspaper.thumbnailUrl || ''
         });
@@ -122,26 +128,30 @@ export default function AdminDailyNewspaperPage() {
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setEditingNewspaper(null);
+        setSelectedFile(null);
         setFormData({
             name: '',
             date: new Date().toISOString().split('T')[0],
-            fileUrl: '',
             fileType: 'pdf',
             thumbnailUrl: ''
         });
         setPreviewUrl('');
     };
 
-    const handleFileUrlChange = (url: string) => {
-        setFormData({ ...formData, fileUrl: url });
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedFile(file);
 
-        // Auto-detect file type
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.endsWith('.pdf')) {
-            setFormData(prev => ({ ...prev, fileUrl: url, fileType: 'pdf' }));
-        } else if (lowerUrl.match(/\.(jpg|jpeg|png|gif|webp)$/)) {
-            setFormData(prev => ({ ...prev, fileUrl: url, fileType: 'image' }));
-            setPreviewUrl(url);
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => setPreviewUrl(e.target?.result as string);
+                reader.readAsDataURL(file);
+                setFormData(prev => ({ ...prev, fileType: 'image' }));
+            } else if (file.type === 'application/pdf') {
+                setFormData(prev => ({ ...prev, fileType: 'pdf' }));
+                setPreviewUrl('');
+            }
         }
     };
 
@@ -243,8 +253,8 @@ export default function AdminDailyNewspaperPage() {
                                         <button
                                             onClick={() => handleToggleVisibility(newspaper._id)}
                                             className={`px-3 py-1 rounded-full text-xs font-bold uppercase transition-all ${newspaper.isVisible
-                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                                 }`}
                                         >
                                             {newspaper.isVisible ? '👁️ Visible' : '🚫 Hidden'}
@@ -343,18 +353,17 @@ export default function AdminDailyNewspaperPage() {
 
                                     <div>
                                         <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            File URL *
+                                            Newspaper File *
                                         </label>
                                         <input
-                                            type="url"
-                                            value={formData.fileUrl}
-                                            onChange={(e) => handleFileUrlChange(e.target.value)}
-                                            placeholder="https://example.com/newspaper.pdf"
+                                            type="file"
+                                            onChange={handleFileChange}
+                                            accept=".pdf,image/*"
                                             className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required
+                                            required={!editingNewspaper}
                                         />
-                                        <p className="text-xs text-gray-400 mt-1 italic">
-                                            Upload file to cloud storage and paste URL here
+                                        <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">
+                                            UPLOAD PDF OR IMAGE DIRECTLY
                                         </p>
                                     </div>
 

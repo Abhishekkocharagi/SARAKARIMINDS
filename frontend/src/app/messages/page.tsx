@@ -126,6 +126,8 @@ function MessagesContent() {
             if (Array.isArray(data)) {
                 setMessages(data);
                 fetchConversations();
+                // Update navbar counts
+                window.dispatchEvent(new Event('notificationsUpdated'));
             }
         } catch (err) { console.error(err); } finally { setMessagesLoading(false); }
     };

@@ -3,7 +3,6 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
-import DailyNewspaperSection from './DailyNewspaperSection';
 
 export default function Sidebar() {
     const { user } = useAuth();
@@ -44,6 +43,22 @@ export default function Sidebar() {
                 </div>
             </div>
 
+            {/* Daily Newspaper Link - CLEAN SINGLE ENTRY */}
+            <Link href="/daily-newspaper" className="block">
+                <div className="bg-white border rounded-xl p-4 shadow-sm hover:border-blue-300 hover:bg-blue-50/30 transition-all flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl group-hover:scale-110 transition-transform">📰</span>
+                        <div>
+                            <h4 className="font-bold text-gray-700 group-hover:text-blue-700 transition-colors">Daily Newspaper</h4>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Read Today's Papers</p>
+                        </div>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </div>
+            </Link>
+
             <div className="bg-white border rounded-xl p-4 shadow-sm">
                 <h4 className="font-bold text-sm mb-3 text-gray-700">My Exams</h4>
                 <div className="flex flex-wrap gap-2">
@@ -54,9 +69,6 @@ export default function Sidebar() {
                     ))}
                 </div>
             </div>
-
-            {/* Daily Newspaper Section */}
-            <DailyNewspaperSection />
         </aside>
     );
 }

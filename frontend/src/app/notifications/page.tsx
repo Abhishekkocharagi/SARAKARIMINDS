@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
     _id: string;
-    type: 'like' | 'comment' | 'follow' | 'connection_request' | 'connection_accept' | 'mention';
+    type: 'like' | 'comment' | 'follow' | 'connection_request' | 'connection_accept' | 'mention' | 'connection_accepted' | 'story_reaction' | 'story_reply' | 'new_post';
     sender: {
         _id: string;
         name: string;
@@ -17,7 +17,7 @@ interface Notification {
     };
     post?: string;
     comment?: string;
-    read: boolean;
+    isRead: boolean;
     createdAt: string;
 }
 
@@ -40,11 +40,29 @@ export default function NotificationsPage() {
     const markAllAsRead = async () => {
         if (!user) return;
         try {
-            await fetch('http://localhost:5000/api/notifications/read-all', {
+            const res = await fetch('http://localhost:5000/api/notifications/read', {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
-            setNotifications(notifications.map(n => ({ ...n, read: true })));
+            if (res.ok) {
+                setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+                // Trigger navbar update
+                window.dispatchEvent(new Event('notificationsUpdated'));
+            }
+        } catch (err) { console.error(err); }
+    };
+
+    const markSingleAsRead = async (id: string) => {
+        if (!user) return;
+        try {
+            const res = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+            if (res.ok) {
+                setNotifications(notifications.map(n => n._id === id ? { ...n, isRead: true } : n));
+                window.dispatchEvent(new Event('notificationsUpdated'));
+            }
         } catch (err) { console.error(err); }
     };
 
@@ -58,8 +76,11 @@ export default function NotificationsPage() {
             case 'comment': return 'commented on your post';
             case 'follow': return 'started following you';
             case 'connection_request': return 'sent you a connection request';
-            case 'connection_accept': return 'accepted your connection request';
+            case 'connection_accepted': return 'accepted your connection request';
             case 'mention': return 'mentioned you in a post';
+            case 'story_reaction': return 'reacted to your story';
+            case 'story_reply': return 'replied to your story';
+            case 'new_post': return 'shared a new post';
             default: return 'sent you a notification';
         }
     };
@@ -105,7 +126,11 @@ export default function NotificationsPage() {
                                 {notifications.map((n) => {
                                     if (!n.sender) return null;
                                     return (
-                                        <div key={n._id} className={`p-6 flex gap-4 hover:bg-gray-50 transition-colors ${!n.read ? 'bg-blue-50/50 border-l-4 border-blue-700' : ''}`}>
+                                        <div
+                                            key={n._id}
+                                            onClick={() => !n.isRead && markSingleAsRead(n._id)}
+                                            className={`p-6 flex gap-4 hover:bg-gray-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-blue-50/50 border-l-4 border-blue-700' : ''}`}
+                                        >
                                             <div className="relative">
                                                 <div className="w-12 h-12 rounded-full bg-blue-50 border overflow-hidden flex items-center justify-center font-bold text-blue-700 uppercase">
                                                     {n.sender.profilePic ? <img src={n.sender.profilePic} className="w-full h-full object-cover" /> : n.sender.name.charAt(0)}
@@ -123,7 +148,7 @@ export default function NotificationsPage() {
                                                     {formatDistanceToNow(new Date(n.createdAt))} ago
                                                 </p>
                                             </div>
-                                            {!n.read && (
+                                            {!n.isRead && (
                                                 <div className="w-2 h-2 bg-blue-700 rounded-full mt-2"></div>
                                             )}
                                         </div>
