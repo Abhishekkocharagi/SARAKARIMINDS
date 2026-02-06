@@ -13,7 +13,12 @@ const getMyExamNews = asyncHandler(async (req, res) => {
         throw new Error('User not found');
     }
 
-    const { examHashtags } = user;
+    let { examHashtags, preferredExams } = user;
+
+    if ((!examHashtags || examHashtags.length === 0) && (preferredExams && preferredExams.length > 0)) {
+        const examsData = await require('../models/Exam').find({ _id: { $in: preferredExams } });
+        examHashtags = examsData.map(e => e.name);
+    }
 
     if (!examHashtags || examHashtags.length === 0) {
         return res.json([]);

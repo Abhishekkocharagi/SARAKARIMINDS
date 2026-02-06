@@ -12,6 +12,7 @@ const createNotification = async (recipientId, senderId, type, postId = null, st
         if ((type === 'comment' || type === 'story_reply') && prefs.comments === false) return;
         if (type === 'connection_request' && prefs.connectionRequests === false) return;
         if (type === 'new_post' && prefs.newPosts === false) return;
+        if (type === 'mention' && prefs.mentions === false) return;
 
         await Notification.create({
             recipient: recipientId,

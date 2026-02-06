@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
 
 interface NetworkUser {
@@ -26,19 +27,31 @@ interface PendingRequest {
     };
 }
 
+interface SentRequest {
+    _id: string;
+    recipient: {
+        _id: string;
+        name: string;
+        profilePic: string;
+        accountType: string;
+    };
+}
+
 export default function NetworkPage() {
     const { user: currentUser } = useAuth();
+    const { t } = useLanguage();
     const [suggestions, setSuggestions] = useState<NetworkUser[]>([]);
     const [connections, setConnections] = useState<NetworkUser[]>([]);
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
+    const [sentRequests, setSentRequests] = useState<SentRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<'suggestions' | 'connections' | 'pending'>('suggestions');
+    const [activeTab, setActiveTab] = useState<'suggestions' | 'connections' | 'pending' | 'sent'>('suggestions');
     const [searchQuery, setSearchQuery] = useState('');
 
     const fetchData = async () => {
         if (!currentUser) return;
         try {
-            const [sugRes, connRes, pendRes] = await Promise.all([
+            const [sugRes, connRes, pendRes, sentRes] = await Promise.all([
                 fetch(`http://localhost:5000/api/connections/suggestions?search=${searchQuery}`, {
                     headers: { 'Authorization': `Bearer ${currentUser?.token}` }
                 }),
@@ -47,12 +60,16 @@ export default function NetworkPage() {
                 }),
                 fetch('http://localhost:5000/api/connections/pending', {
                     headers: { 'Authorization': `Bearer ${currentUser?.token}` }
+                }),
+                fetch('http://localhost:5000/api/connections/sent', {
+                    headers: { 'Authorization': `Bearer ${currentUser?.token}` }
                 })
             ]);
 
             const sugData = await sugRes.json();
             const connData = await connRes.json();
             const pendData = await pendRes.json();
+            const sentData = await sentRes.json();
 
             // Deduplicate and filter out nulls
             if (Array.isArray(sugData)) {
@@ -67,11 +84,24 @@ export default function NetworkPage() {
                 const unique = pendData.filter((r: any) => !!r && !!r.requester).filter((v: any, i: any, a: any) => a.findIndex((t: any) => t._id === v._id) === i);
                 setPendingRequests(unique);
             }
+            if (Array.isArray(sentData)) {
+                const unique = sentData.filter((r: any) => !!r && !!r.recipient).filter((v: any, i: any, a: any) => a.findIndex((t: any) => t._id === v._id) === i);
+                setSentRequests(unique);
+            }
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
     useEffect(() => {
-        if (currentUser) fetchData();
+        if (currentUser) {
+            fetchData();
+            // Clear network badge when visiting this page
+            fetch('http://localhost:5000/api/connections/mark-seen', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${currentUser?.token}` }
+            }).then(() => {
+                window.dispatchEvent(new Event('notificationsUpdated'));
+            }).catch(console.error);
+        }
     }, [currentUser, searchQuery]);
 
     const handleConnect = async (targetId: string) => {
@@ -104,6 +134,7 @@ export default function NetworkPage() {
                 setSuggestions(prev => prev.map(s =>
                     s._id === targetId ? { ...s, connectionStatus: 'none', requestId: undefined } : s
                 ));
+                setSentRequests(prev => prev.filter(r => r._id !== requestId));
             } else {
                 const data = await res.json();
                 alert(data.message || 'Failed to withdraw request');
@@ -136,8 +167,8 @@ export default function NetworkPage() {
     return (
         <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
-            <main className="max-w-6xl mx-auto pt-24 px-4 pb-10 flex flex-col md:flex-row gap-6">
-                <div className="hidden lg:block w-1/4">
+            <main className="max-w-7xl mx-auto pt-6 px-6 pb-10 flex flex-col md:flex-row gap-6">
+                <div className="hidden md:block w-[280px] shrink-0">
                     <Sidebar />
                 </div>
 
@@ -150,22 +181,33 @@ export default function NetworkPage() {
                                     onClick={() => setActiveTab('suggestions')}
                                     className={`px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'suggestions' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                                 >
-                                    Discover
+                                    {t('network.tabs.discover')}
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('connections')}
                                     className={`px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${activeTab === 'connections' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                                 >
-                                    My Network ({connections.length})
+                                    {t('network.tabs.my_network')} ({connections.length})
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('pending')}
                                     className={`px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all relative ${activeTab === 'pending' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                                 >
-                                    Requests
+                                    {t('network.tabs.requests')}
                                     {pendingRequests.length > 0 && (
                                         <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
                                             {pendingRequests.length}
+                                        </span>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('sent')}
+                                    className={`px-6 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all relative ${activeTab === 'sent' ? 'bg-white text-[#1a237e] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    {t('network.tabs.sent')}
+                                    {sentRequests.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white">
+                                            {sentRequests.length}
                                         </span>
                                     )}
                                 </button>
@@ -175,7 +217,7 @@ export default function NetworkPage() {
                                 <div className="relative w-full md:w-64">
                                     <input
                                         type="text"
-                                        placeholder="Find Aspirants..."
+                                        placeholder={t('network.search_placeholder')}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         className="w-full bg-gray-50 border border-gray-100 py-2.5 pl-10 pr-4 rounded-xl outline-none focus:border-blue-600 focus:bg-white transition-all text-xs font-bold"
@@ -214,10 +256,10 @@ export default function NetworkPage() {
                                             {u.name}
                                         </Link>
                                         <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1 mb-3">
-                                            Karnataka Aspirant
+                                            {t('network.karnataka_aspirant')}
                                         </p>
                                         <p className="text-[11px] text-gray-500 line-clamp-2 font-medium h-8 mb-6 italic leading-relaxed">
-                                            {u.about || "Dedicated to serving the state through excellence."}
+                                            {u.about || t('network.about_placeholder')}
                                         </p>
 
                                         {u.connectionStatus === 'none' && (
@@ -225,7 +267,7 @@ export default function NetworkPage() {
                                                 onClick={() => handleConnect(u._id)}
                                                 className="w-full py-3 bg-[#1a237e] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg shadow-blue-900/10 active:scale-95"
                                             >
-                                                Connect
+                                                {t('network.connect')}
                                             </button>
                                         )}
                                         {u.connectionStatus === 'sent' && (
@@ -233,7 +275,7 @@ export default function NetworkPage() {
                                                 onClick={() => u.requestId && handleWithdraw(u.requestId, u._id)}
                                                 className="w-full py-3 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all border border-transparent hover:border-red-100"
                                             >
-                                                Withdraw Req
+                                                {t('network.withdraw')}
                                             </button>
                                         )}
                                         {u.connectionStatus === 'received' && (
@@ -241,7 +283,7 @@ export default function NetworkPage() {
                                                 onClick={() => setActiveTab('pending')}
                                                 className="w-full py-3 bg-green-50 text-green-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-100 transition-all border border-green-100"
                                             >
-                                                Review Req
+                                                {t('network.review')}
                                             </button>
                                         )}
                                         {u.connectionStatus === 'connected' && (
@@ -249,7 +291,7 @@ export default function NetworkPage() {
                                                 href={`/profile/${u._id}`}
                                                 className="block w-full py-3 bg-white text-blue-700 border-2 border-blue-50 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all"
                                             >
-                                                Connected ✓
+                                                {t('network.connected')}
                                             </Link>
                                         )}
                                     </div>
@@ -272,7 +314,7 @@ export default function NetworkPage() {
                                         <Link href={`/profile/${u._id}`} className="block font-black text-gray-900 tracking-tight hover:text-blue-700 transition truncate uppercase text-sm">
                                             {u.name}
                                         </Link>
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Aspirant Network</p>
+                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('network.aspirant_network')}</p>
                                     </div>
                                     <Link
                                         href={`/messages?user=${u._id}`}
@@ -297,33 +339,58 @@ export default function NetworkPage() {
                                         )}
                                     </div>
                                     <h3 className="font-black text-gray-900 tracking-tight uppercase text-sm">{r?.requester?.name || 'Unknown Aspirant'}</h3>
-                                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1 mb-4">Requesting to Connect</p>
+                                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1 mb-4">{t('network.requesting')}</p>
 
                                     <div className="grid grid-cols-2 gap-2">
                                         <button
                                             onClick={() => handleResponse(r._id, 'accepted')}
                                             className="py-2.5 bg-[#1a237e] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
                                         >
-                                            Accept
+                                            {t('network.accept')}
                                         </button>
                                         <button
                                             onClick={() => handleResponse(r._id, 'rejected')}
                                             className="py-2.5 bg-gray-50 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-500 transition-all"
                                         >
-                                            Ignore
+                                            {t('network.ignore')}
                                         </button>
                                     </div>
+                                </div>
+                            ))}
+
+                            {/* Sent Requests View */}
+                            {activeTab === 'sent' && sentRequests.map((r) => (
+                                <div key={r._id} className="bg-white rounded-3xl border shadow-sm p-6 text-center">
+                                    <div className="mx-auto mb-4 w-20 h-20 rounded-full border-2 border-blue-100 p-1">
+                                        {r?.recipient?.profilePic ? (
+                                            <img src={r.recipient.profilePic} className="w-full h-full object-cover rounded-full" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-gray-50 rounded-full font-black text-[#1a237e] text-2xl uppercase">
+                                                {r?.recipient?.name?.charAt(0) || '?'}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <h3 className="font-black text-gray-900 tracking-tight uppercase text-sm">{r?.recipient?.name || 'Unknown Aspirant'}</h3>
+                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1 mb-4">Sent to Aspirant</p>
+
+                                    <button
+                                        onClick={() => handleWithdraw(r._id, r.recipient._id)}
+                                        className="w-full py-2.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border-2 border-red-100 active:scale-95"
+                                    >
+                                        {t('network.withdraw')}
+                                    </button>
                                 </div>
                             ))}
 
                             {/* Empty States */}
                             {((activeTab === 'suggestions' && suggestions.length === 0) ||
                                 (activeTab === 'connections' && connections.length === 0) ||
-                                (activeTab === 'pending' && pendingRequests.length === 0)) && (
+                                (activeTab === 'pending' && pendingRequests.length === 0) ||
+                                (activeTab === 'sent' && sentRequests.length === 0)) && (
                                     <div className="col-span-full py-20 bg-white rounded-3xl border border-dashed border-gray-100 text-center">
                                         <p className="text-5xl mb-6 grayscale opacity-50">🛰️</p>
-                                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-1">Silence in this Sector</h3>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">No {activeTab} available at this time</p>
+                                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-1">{t('network.empty_title')}</h3>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('network.empty_desc')}</p>
                                     </div>
                                 )}
                         </div>

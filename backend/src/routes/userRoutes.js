@@ -14,7 +14,11 @@ const {
     clearRecentSearches,
     deleteUser,
     applyMentor,
-    applyAcademy
+    applyAcademy,
+    changePassword,
+    changeEmail,
+    deleteAccount,
+    updateNotificationPreferences
 } = require('../controllers/userController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -35,8 +39,14 @@ router.route('/recent-search')
     .get(protect, getRecentSearches)
     .delete(protect, clearRecentSearches);
 
-router.post('/apply-mentor', protect, applyMentor);
-router.post('/apply-academy', protect, applyAcademy);
+router.post('/apply-mentor', protect, upload.single('document'), applyMentor);
+router.post('/apply-academy', protect, upload.single('document'), applyAcademy);
+
+// Security Routes
+router.put('/change-password', protect, changePassword);
+router.put('/change-email', protect, changeEmail);
+router.delete('/delete-account', protect, deleteAccount);
+router.put('/notification-preferences', protect, updateNotificationPreferences);
 
 router.get('/:id', protect, getUserById);
 router.post('/:id/follow', protect, toggleFollow);

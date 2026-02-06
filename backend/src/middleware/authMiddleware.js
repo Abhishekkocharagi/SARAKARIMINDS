@@ -39,4 +39,22 @@ const admin = (req, res, next) => {
     }
 };
 
-module.exports = { protect, admin };
+const mentor = (req, res, next) => {
+    if (req.user && (req.user.role === 'mentor' || req.user.role === 'academy' || req.user.role === 'admin')) {
+        next();
+    } else {
+        res.status(401);
+        throw new Error('Not authorized as a mentor or academy');
+    }
+};
+
+const academy = (req, res, next) => {
+    if (req.user && (req.user.role === 'academy' || req.user.role === 'admin')) {
+        next();
+    } else {
+        res.status(401);
+        throw new Error('Not authorized as an academy');
+    }
+};
+
+module.exports = { protect, admin, mentor, academy };

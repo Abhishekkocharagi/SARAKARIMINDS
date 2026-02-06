@@ -15,7 +15,10 @@ const {
     deleteContent,
     getPendingApplications,
     approveApplication,
-    rejectApplication
+    rejectApplication,
+    getVerifiedUsers,
+    getVerifiedUserDetails,
+    revokeVerification
 } = require('../controllers/adminController');
 const { protect, admin } = require('../middleware/authMiddleware');
 
@@ -31,6 +34,9 @@ router.put('/academies/approve/:userId', protect, admin, approveAcademy);
 router.put('/academies/reject/:userId', protect, admin, rejectAcademy);
 router.get('/content', protect, admin, getAllContent);
 router.delete('/content/:postId', protect, admin, deleteContent);
+router.get('/verified-users', protect, admin, getVerifiedUsers);
+router.get('/verified-users/:userId', protect, admin, getVerifiedUserDetails);
+router.put('/verified-users/revoke/:userId', protect, admin, revokeVerification);
 
 // Legacy routes for backward compatibility
 router.get('/applications', protect, admin, getPendingApplications);

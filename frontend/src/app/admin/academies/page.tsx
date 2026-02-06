@@ -14,6 +14,9 @@ interface PendingAcademy {
         website?: string;
         description?: string;
     };
+    academyApplication?: {
+        documents?: string[];
+    };
     createdAt: string;
 }
 
@@ -97,6 +100,25 @@ export default function AdminAcademies() {
                                     >
                                         🌐 Visit Official Website
                                     </a>
+                                )}
+                                {aca.academyApplication?.documents && aca.academyApplication.documents.length > 0 && (
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <p className="text-sm font-bold text-gray-700 mb-2">📎 Supporting Documents:</p>
+                                        <div className="space-y-2">
+                                            {aca.academyApplication.documents.map((doc, i) => (
+                                                <a
+                                                    key={i}
+                                                    href={`http://localhost:5000/${doc}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center justify-between p-3 rounded-xl bg-white hover:bg-blue-50 transition-colors border border-gray-200 group"
+                                                >
+                                                    <span className="text-xs font-bold text-gray-600">Document #{i + 1}</span>
+                                                    <span className="text-blue-600 group-hover:translate-x-1 transition-transform">↗</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         </div>

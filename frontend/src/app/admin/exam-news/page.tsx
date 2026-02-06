@@ -58,7 +58,7 @@ export default function AdminExamNews() {
 
         const payload = {
             ...formData,
-            hashtags: formData.hashtags.split(',').map(tag => tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`)
+            hashtags: formData.hashtags.split(',').map(tag => tag.trim())
         };
 
         try {

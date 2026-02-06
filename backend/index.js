@@ -17,6 +17,19 @@ const startServer = async () => {
         app.use(cors());
         app.use(express.json());
 
+        // Serve Static Files with PDF headers
+        const path = require('path');
+        app.use('/uploads', (req, res, next) => {
+            if (req.path.endsWith('.pdf')) {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', 'inline');
+            }
+            next();
+        }, express.static(path.join(__dirname, 'uploads')));
+
+        // Handle favicon.ico to prevent 404/500 errors
+        app.get('/favicon.ico', (req, res) => res.status(204).end());
+
         // Routes
         app.use('/api/users', require('./src/routes/userRoutes'));
         app.use('/api/auth', require('./src/routes/authRoutes'));
@@ -32,6 +45,20 @@ const startServer = async () => {
         app.use('/api/exam-news', require('./src/routes/examNewsRoutes'));
         app.use('/api/admin/exam-news', require('./src/routes/examNewsRoutes'));
         app.use('/api/daily-newspapers', require('./src/routes/dailyNewspaperRoutes'));
+        app.use('/api/mentor', require('./src/routes/mentorRoutes')); // NEW
+        app.use('/api/groups', require('./src/routes/groupRoutes')); // NEW
+        app.use('/api/academy', require('./src/routes/academyRoutes')); // NEW
+        app.use('/api/campaigns', require('./src/routes/campaignRoutes')); // NEW
+        app.use('/api/admin/job-updates', require('./src/routes/jobUpdateRoutes')); // NEW
+        app.use('/api/jobs', require('./src/routes/publicJobRoutes')); // NEW Public Job Routes
+        app.use('/api/exams', require('./src/routes/examRoutes')); // EXAM ECOSYSTEM
+        app.use('/api/admin/exams', require('./src/routes/adminExamRoutes')); // EXAM ECOSYSTEM ADMIN
+        app.use('/api/analytics', require('./src/routes/analyticsRoutes')); // ANALYTICS
+        app.use('/api/quiz', require('./src/routes/quizRoutes')); // QUIZ
+        app.use('/api/jilebi', require('./src/routes/jilebiRoutes')); // JILEBI USER
+        app.use('/api/admin/jilebi', require('./src/routes/jilebiRoutes')); // JILEBI ADMIN (mounted at root)
+        app.use('/api/word-path', require('./src/routes/wordPathRoutes')); // WORD PATH CHALLENGE
+        app.use('/api/current-affairs', require('./src/routes/currentAffairRoutes')); // CURRENT AFFAIRS
 
         app.get('/', (req, res) => {
             res.send('SarkariMinds API is running...');

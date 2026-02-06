@@ -107,7 +107,12 @@ const getMessages = asyncHandler(async (req, res) => {
     })
         .sort({ createdAt: 1 })
         .populate('sender', 'name profilePic accountType isBot')
-        .populate('recipient', 'name profilePic accountType isBot');
+        .populate('recipient', 'name profilePic accountType isBot')
+        .populate({
+            path: 'post',
+            select: 'content mediaUrl mediaType user',
+            populate: { path: 'user', select: 'name profilePic' }
+        });
 
     // For display, if isDeletedForEveryone is true, we strip sensitive info
     const sanitizedMessages = messages.map(m => {
@@ -133,7 +138,7 @@ const getMessages = asyncHandler(async (req, res) => {
 
 // @desc    Send message
 const sendMessage = asyncHandler(async (req, res) => {
-    const { recipientId, text, storyId } = req.body;
+    const { recipientId, text, storyId, postId } = req.body;
     let fileData = {};
 
     if (req.file) {
@@ -144,9 +149,9 @@ const sendMessage = asyncHandler(async (req, res) => {
         };
     }
 
-    if (!text && !req.file) {
+    if (!text && !req.file && !postId) {
         res.status(400);
-        throw new Error('Message must contain text or a file');
+        throw new Error('Message must contain text, a file, or a post attachment');
     }
 
     const message = await Message.create({
@@ -154,12 +159,18 @@ const sendMessage = asyncHandler(async (req, res) => {
         recipient: recipientId,
         text: text || '',
         story: storyId || null,
+        post: postId || null,
         ...fileData
     });
 
     const populatedMessage = await Message.findById(message._id)
         .populate('sender', 'name profilePic accountType')
-        .populate('recipient', 'name profilePic accountType');
+        .populate('recipient', 'name profilePic accountType')
+        .populate({
+            path: 'post',
+            select: 'content mediaUrl mediaType user',
+            populate: { path: 'user', select: 'name profilePic' }
+        });
 
     // Bot logic
     const recipient = await User.findById(recipientId);
@@ -251,6 +262,17 @@ const deleteConversation = asyncHandler(async (req, res) => {
     res.json({ message: 'Conversation deleted for you' });
 });
 
+// @desc    Mark all unread messages as read
+// @route   PUT /api/messages/read-all
+// @access  Private
+const markMessagesAsRead = asyncHandler(async (req, res) => {
+    await Message.updateMany(
+        { recipient: req.user._id, isRead: false },
+        { isRead: true }
+    );
+    res.json({ message: 'All messages marked as read' });
+});
+
 module.exports = {
     getConversations,
     getMessages,
@@ -258,5 +280,6 @@ module.exports = {
     getBots,
     updatePreference,
     deleteConversation,
-    deleteSingleMessage
+    deleteSingleMessage,
+    markMessagesAsRead
 };

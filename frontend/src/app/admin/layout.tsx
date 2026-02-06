@@ -45,6 +45,7 @@ export default function AdminLayout({
 
     const navItems = [
         { name: 'Dashboard', href: '/admin/dashboard', icon: '📊' },
+        { name: 'Sales & Growth', href: '/admin/sales-dashboard', icon: '📈' },
         { name: 'Mentors', href: '/admin/mentors', icon: '🎓' },
         { name: 'Academies', href: '/admin/academies', icon: '🏛️' },
         { name: 'Users', href: '/admin/users', icon: '👥' },
@@ -52,6 +53,13 @@ export default function AdminLayout({
         { name: 'Ads', href: '/admin/ads', icon: '📢' },
         { name: 'Exam News', href: '/admin/exam-news', icon: '📰' },
         { name: 'Daily Newspaper', href: '/admin/daily-newspaper', icon: '🗞️' },
+        { name: 'Job Updates', href: '/admin/job-updates', icon: '💼' },
+        { name: 'Daily Quiz', href: '/admin/quiz', icon: '⭐' },
+        { name: 'Daily Quiz Puzzles', href: '/admin/jilebi', icon: '🟡' },
+        { name: 'Word Path Admin', href: '/admin/word-path', icon: '🟢' },
+        { name: 'Exams Ecosystem', href: '/admin/exams', icon: '📝' },
+        { name: 'Current Affairs', href: '/admin/current-affairs', icon: '🌍' },
+        { name: 'Verified Users', href: '/admin/verified-users', icon: '✅' },
     ];
 
     return (
@@ -59,11 +67,11 @@ export default function AdminLayout({
             {/* Sidebar */}
             <aside className="w-64 bg-gray-900 text-white flex flex-col fixed h-full transition-all duration-300">
                 <div className="p-6">
-                    <h1 className="text-2xl font-black tracking-tighter text-blue-500">ADMIN PANEL</h1>
-                    <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-bold">NammaSarkaari</p>
+                    <h1 className="text-2xl font-black text-blue-500">ADMIN PANEL</h1>
+                    <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-bold">SarkariMinds</p>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-2 mt-4">
+                <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
                     {navItems.map((item) => (
                         <Link
                             key={item.href}

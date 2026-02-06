@@ -1,6 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const OTP = require('../models/OTP');
+const Exam = require('../models/Exam');
 const generateToken = require('../utils/generateToken');
 const { sendEmailOTP, sendSMSOTP } = require('../utils/otpService');
 
@@ -121,8 +122,18 @@ const verifyAndRegister = asyncHandler(async (req, res) => {
         throw new Error('Invalid or expired verification code');
     }
 
+    // Preferred Exams Validation
+    const preferredExams = req.body.preferredExams || [];
+    if (preferredExams.length === 0 || preferredExams.length > 5) {
+        res.status(400);
+        throw new Error('Please select between 1 and 5 preferred exams.');
+    }
+
+    // Sync with legacy fields
+    const selectedExamsData = await Exam.find({ _id: { $in: preferredExams } });
+    const examNames = selectedExamsData.map(e => e.name);
+
     // Force default role as 'student' and accountType as 'Aspirant'
-    // This removes role selection during signup
     const userData = {
         name,
         email,
@@ -131,7 +142,9 @@ const verifyAndRegister = asyncHandler(async (req, res) => {
         role: 'student',
         accountType: 'Aspirant',
         about: req.body.about || '',
-        exams: req.body.exams || [],
+        exams: examNames,
+        examHashtags: examNames,
+        preferredExams,
         mentorApplicationStatus: 'none',
         academyApplicationStatus: 'none'
     };
@@ -143,13 +156,16 @@ const verifyAndRegister = asyncHandler(async (req, res) => {
     await OTP.findByIdAndDelete(otpRecord._id);
 
     if (user) {
+        const fullUser = await User.findById(user._id).populate('preferredExams', 'name fullName category');
         res.status(201).json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            accountType: user.accountType,
-            token: generateToken(user._id),
+            _id: fullUser._id,
+            name: fullUser.name,
+            email: fullUser.email,
+            role: fullUser.role,
+            accountType: fullUser.accountType,
+            token: generateToken(fullUser._id),
+            exams: fullUser.exams,
+            preferredExams: fullUser.preferredExams,
             message: 'Account created successfully'
         });
     } else {

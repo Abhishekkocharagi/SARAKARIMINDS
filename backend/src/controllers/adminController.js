@@ -2,6 +2,10 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Story = require('../models/Story');
+const Notification = require('../models/Notification');
+const MentorGroup = require('../models/MentorGroup');
+const AdminLog = require('../models/AdminLog');
+const GroupMembership = require('../models/GroupMembership');
 
 // @desc    Get platform stats
 // @route   GET /api/admin/stats
@@ -90,11 +94,23 @@ const approveMentor = asyncHandler(async (req, res) => {
     user.role = 'mentor';
     user.accountType = 'Mentor';
     user.mentorApplicationStatus = 'approved';
+    user.isVerified = true;
+    user.verificationApprovedAt = new Date();
+
     if (user.mentorApplication) {
         user.mentorApplication.status = 'approved';
         user.mentorApplication.reviewedAt = new Date();
     }
     await user.save();
+
+    // Send Notification
+    await Notification.create({
+        recipient: user._id,
+        sender: req.user._id, // Admin
+        type: 'system',
+        message: 'Your account has been verified as Mentor! You now have access to the Mentor Dashboard.'
+    });
+
     res.json({ message: 'Mentor application approved' });
 });
 
@@ -113,6 +129,15 @@ const rejectMentor = asyncHandler(async (req, res) => {
         user.mentorApplication.reviewedAt = new Date();
     }
     await user.save();
+
+    // Send Notification
+    await Notification.create({
+        recipient: user._id,
+        sender: req.user._id, // Admin
+        type: 'system',
+        message: 'Your mentor verification request was rejected. You may reapply.'
+    });
+
     res.json({ message: 'Mentor application rejected' });
 });
 
@@ -128,11 +153,23 @@ const approveAcademy = asyncHandler(async (req, res) => {
     user.role = 'academy';
     user.accountType = 'Academy';
     user.academyApplicationStatus = 'approved';
+    user.isVerified = true;
+    user.verificationApprovedAt = new Date();
+
     if (user.academyApplication) {
         user.academyApplication.status = 'approved';
         user.academyApplication.reviewedAt = new Date();
     }
     await user.save();
+
+    // Send Notification
+    await Notification.create({
+        recipient: user._id,
+        sender: req.user._id, // Admin
+        type: 'system',
+        message: 'Your account has been verified as Academy! You now have access to the Academy Dashboard.'
+    });
+
     res.json({ message: 'Academy application approved' });
 });
 
@@ -151,6 +188,15 @@ const rejectAcademy = asyncHandler(async (req, res) => {
         user.academyApplication.reviewedAt = new Date();
     }
     await user.save();
+
+    // Send Notification
+    await Notification.create({
+        recipient: user._id,
+        sender: req.user._id, // Admin
+        type: 'system',
+        message: 'Your academy verification request was rejected. You may reapply.'
+    });
+
     res.json({ message: 'Academy application rejected' });
 });
 
@@ -207,12 +253,16 @@ const approveApplication = asyncHandler(async (req, res) => {
         user.role = 'mentor';
         user.accountType = 'Mentor';
         user.mentorApplicationStatus = 'approved';
+        user.isVerified = true; // FIX: Ensure verification
+        user.verificationApprovedAt = new Date();
         user.mentorApplication.status = 'approved';
         user.mentorApplication.reviewedAt = new Date();
     } else if (type === 'academy') {
         user.role = 'academy';
         user.accountType = 'Academy';
         user.academyApplicationStatus = 'approved';
+        user.isVerified = true; // FIX: Ensure verification
+        user.verificationApprovedAt = new Date();
         user.academyApplication.status = 'approved';
         user.academyApplication.reviewedAt = new Date();
     } else {
@@ -253,6 +303,120 @@ const rejectApplication = asyncHandler(async (req, res) => {
     res.json({ message: 'Application rejected', user });
 });
 
+// @desc    Get all verified mentors and academies
+// @route   GET /api/admin/verified-users
+// @access  Private/Admin
+const getVerifiedUsers = asyncHandler(async (req, res) => {
+    const users = await User.find({
+        role: { $in: ['mentor', 'academy'] },
+        $or: [
+            { mentorApplicationStatus: 'approved' },
+            { academyApplicationStatus: 'approved' }
+        ]
+    }).select('name email mobile role verificationApprovedAt isBlocked mentorApplicationStatus academyApplicationStatus');
+
+    // Add community counts
+    const usersWithStats = await Promise.all(users.map(async (u) => {
+        const communityCount = await MentorGroup.countDocuments({ mentor: u._id });
+        const paidCommunityCount = await MentorGroup.countDocuments({ mentor: u._id, isPaid: true });
+        return {
+            ...u.toObject(),
+            communityCount,
+            paidCommunityCount
+        };
+    }));
+
+    res.json(usersWithStats);
+});
+
+// @desc    Get verified user details
+// @route   GET /api/admin/verified-users/:userId
+// @access  Private/Admin
+const getVerifiedUserDetails = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.params.userId).select('-password');
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const groups = await MentorGroup.find({ mentor: user._id });
+    const memberships = await GroupMembership.find({
+        group: { $in: groups.map(g => g._id) }
+    }).populate('user', 'name email').sort({ createdAt: -1 });
+
+    const stats = {
+        totalCommunities: groups.length,
+        paidCommunities: groups.filter(g => g.isPaid).length,
+        totalEarnings: memberships.filter(m => m.paymentStatus === 'active').reduce((acc, m) => acc + (m.amountPaid || 0), 0)
+    };
+
+    res.json({
+        user,
+        communities: groups, // Frontend uses 'communities' key
+        payments: memberships, // Frontend uses 'payments' key
+        stats
+    });
+});
+
+// @desc    Revoke mentor/academy verification
+// @route   PUT /api/admin/verified-users/revoke/:userId
+// @access  Private/Admin
+const revokeVerification = asyncHandler(async (req, res) => {
+    const { reason } = req.body;
+    const user = await User.findById(req.params.userId);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    const previousRole = user.role;
+    user.role = 'student';
+    user.accountType = 'Aspirant';
+    user.isVerified = false;
+
+    if (user.mentorApplicationStatus === 'approved') {
+        user.mentorApplicationStatus = 'revoked';
+        if (user.mentorApplication) {
+            user.mentorApplication.status = 'revoked';
+        }
+    }
+
+    if (user.academyApplicationStatus === 'approved') {
+        user.academyApplicationStatus = 'revoked';
+        if (user.academyApplication) {
+            user.academyApplication.status = 'revoked';
+        }
+    }
+
+    await user.save();
+
+    // Log the action
+    await AdminLog.create({
+        admin: req.user._id,
+        action: 'REVOKE_VERIFICATION',
+        targetUser: user._id,
+        details: `Revoked ${previousRole} verification. Previous role: ${previousRole}`,
+        reason: reason || 'No reason provided'
+    });
+
+    // Notify user
+    await Notification.create({
+        recipient: user._id,
+        sender: req.user._id,
+        type: 'system',
+        message: `Verification Revoked: Your ${previousRole} verification has been removed by admin. Reason: ${reason || 'Not specified'}. You can continue using the platform as a student.`
+    });
+
+    // Archive groups
+    await MentorGroup.updateMany(
+        { mentor: user._id },
+        { status: 'archived' }
+    );
+
+    res.json({ message: 'Verification revoked successfully' });
+});
+
 module.exports = {
     getStats,
     getPendingMentors,
@@ -268,5 +432,8 @@ module.exports = {
     deleteContent,
     getPendingApplications,
     approveApplication,
-    rejectApplication
+    rejectApplication,
+    getVerifiedUsers,
+    getVerifiedUserDetails,
+    revokeVerification
 };

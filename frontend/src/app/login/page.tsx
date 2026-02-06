@@ -5,12 +5,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const { login, user, loading } = useAuth();
+    const { t } = useLanguage();
     const router = useRouter();
 
     useEffect(() => {
@@ -31,12 +33,18 @@ export default function LoginPage() {
             const data = await res.json();
             if (res.ok) {
                 login(data);
+
+                // Show deletion cancellation message if applicable
+                if (data.deletionCancelled) {
+                    alert('✅ Welcome back! Your account deletion has been cancelled. Your account is now active again.');
+                }
+
                 router.push('/feed');
             } else {
-                setError(data.message || 'Invalid email or password.');
+                setError(data.message || t('auth.invalid_login'));
             }
         } catch (err) {
-            setError('Connection failed. Please check your internet.');
+            setError(t('auth.conn_failed'));
         }
     };
 
@@ -50,8 +58,8 @@ export default function LoginPage() {
 
             <div className="max-w-md w-full bg-white rounded-[3rem] shadow-2xl p-10 md:p-12 border border-gray-100 z-10 relative">
                 <div className="text-center mb-10">
-                    <h1 className="text-4xl font-black text-[#1a237e] tracking-tighter uppercase mb-2">SarkariMinds</h1>
-                    <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">Log in to your aspirant portal</p>
+                    <img src="/logo_full.png" alt="SarkariMinds" className="h-16 mx-auto mb-4 object-contain" />
+                    <p className="text-gray-400 font-bold uppercase tracking-widest text-[10px]">{t('auth.login_portal')}</p>
                 </div>
 
                 {error && (
@@ -62,7 +70,7 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-1.5">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('auth.email_label')}</label>
                         <div className="relative group">
                             <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1a237e] transition-colors" />
                             <input
@@ -70,7 +78,7 @@ export default function LoginPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full bg-gray-50 border border-gray-200 pl-11 pr-4 py-4 rounded-2xl focus:outline-none focus:border-[#1a237e] focus:bg-white transition-all font-bold text-gray-700 placeholder:text-gray-300"
-                                placeholder="name@example.com"
+                                placeholder={t('auth.id_placeholder')}
                                 required
                             />
                         </div>
@@ -78,8 +86,8 @@ export default function LoginPage() {
 
                     <div className="space-y-1.5">
                         <div className="flex justify-between items-center px-1">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Password</label>
-                            <Link href="/forgot-password" title="Forgot Password" className="text-[10px] font-black text-[#1a237e] uppercase tracking-widest hover:underline underline-offset-4">Forgot?</Link>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('auth.pass_label')}</label>
+                            <Link href="/forgot-password" title="Forgot Password" className="text-[10px] font-black text-[#1a237e] uppercase tracking-widest hover:underline underline-offset-4">{t('auth.forgot_link')}</Link>
                         </div>
                         <div className="relative group">
                             <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#1a237e] transition-colors" />
@@ -88,7 +96,7 @@ export default function LoginPage() {
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-gray-50 border border-gray-200 pl-11 pr-4 py-4 rounded-2xl focus:outline-none focus:border-[#1a237e] focus:bg-white transition-all font-bold text-gray-700 placeholder:text-gray-300"
-                                placeholder="••••••••"
+                                placeholder={t('auth.password_placeholder')}
                                 required
                             />
                         </div>
@@ -99,9 +107,9 @@ export default function LoginPage() {
                         disabled={loading}
                         className="w-full bg-[#1a237e] hover:bg-black text-white font-black py-5 rounded-2xl transition-all shadow-xl shadow-blue-900/20 uppercase tracking-widest flex items-center justify-center gap-2 group mt-4 active:scale-95 disabled:opacity-50"
                     >
-                        {loading ? 'Entering Community...' : (
+                        {loading ? t('auth.entering') : (
                             <>
-                                Sign In Now
+                                {t('auth.signin_btn')}
                                 <FiArrowRight className="group-hover:translate-x-1 transition-transform" />
                             </>
                         )}
@@ -110,8 +118,8 @@ export default function LoginPage() {
 
                 <div className="mt-12 pt-10 border-t border-gray-50 text-center">
                     <p className="text-gray-400 font-bold text-xs uppercase tracking-tight">
-                        New to the community?{' '}
-                        <Link href="/signup" title="Create Account" className="text-[#1a237e] font-black hover:underline uppercase tracking-widest ml-1 transition-colors">Join Now</Link>
+                        {t('auth.new_community')}{' '}
+                        <Link href="/signup" title="Create Account" className="text-[#1a237e] font-black hover:underline uppercase tracking-widest ml-1 transition-colors">{t('nav.join_now')}</Link>
                     </p>
                 </div>
             </div>

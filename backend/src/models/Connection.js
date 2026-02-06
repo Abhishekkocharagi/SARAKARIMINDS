@@ -8,6 +8,10 @@ const connectionSchema = mongoose.Schema({
         required: true,
         enum: ['pending', 'accepted', 'rejected'],
         default: 'pending'
+    },
+    isSeen: {
+        type: Boolean,
+        default: false
     }
 }, { timestamps: true });
 

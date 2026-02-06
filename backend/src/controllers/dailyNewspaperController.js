@@ -58,17 +58,27 @@ exports.getNewspaperById = async (req, res) => {
 // @access  Private/Admin
 exports.createNewspaper = async (req, res) => {
     try {
-        const { name, date, fileUrl, fileType, thumbnailUrl } = req.body;
+        const { name, date, thumbnailUrl } = req.body;
+        let fileUrl = req.body.fileUrl;
+        let fileType = req.body.fileType;
 
-        if (!name || !fileUrl || !fileType) {
-            return res.status(400).json({ message: 'Please provide name, fileUrl, and fileType' });
+        // Handle uploaded file
+        if (req.file) {
+            const today = new Date().toISOString().split('T')[0];
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            fileUrl = `${baseUrl}/uploads/newspapers/${today}/${req.file.filename}`;
+            fileType = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
+        }
+
+        if (!name || !fileUrl) {
+            return res.status(400).json({ message: 'Please provide name and a file' });
         }
 
         const newspaper = await DailyNewspaper.create({
             name,
             date: date || new Date(),
             fileUrl,
-            fileType,
+            fileType: fileType || (fileUrl.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'),
             thumbnailUrl,
             uploadedBy: req.user._id
         });
@@ -88,12 +98,22 @@ exports.createNewspaper = async (req, res) => {
 // @access  Private/Admin
 exports.updateNewspaper = async (req, res) => {
     try {
-        const { name, date, fileUrl, fileType, thumbnailUrl, isVisible } = req.body;
+        const { name, date, thumbnailUrl, isVisible } = req.body;
+        let fileUrl = req.body.fileUrl;
+        let fileType = req.body.fileType;
 
         const newspaper = await DailyNewspaper.findById(req.params.id);
 
         if (!newspaper) {
             return res.status(404).json({ message: 'Newspaper not found' });
+        }
+
+        // Handle uploaded file if present
+        if (req.file) {
+            const today = new Date().toISOString().split('T')[0];
+            const baseUrl = `${req.protocol}://${req.get('host')}`;
+            fileUrl = `${baseUrl}/uploads/newspapers/${today}/${req.file.filename}`;
+            fileType = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
         }
 
         // Update fields

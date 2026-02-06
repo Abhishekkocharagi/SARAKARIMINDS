@@ -5,6 +5,7 @@ const storySchema = mongoose.Schema({
     content: { type: String },
     mediaUrl: { type: String }, // Renamed from image
     mediaType: { type: String, enum: ['image', 'video'], default: 'image' },
+    sharedPost: { type: mongoose.Schema.Types.ObjectId, ref: 'Post' }, // Reference to a shared post
     mentions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     tags: [{ type: String }],
     reactions: [{

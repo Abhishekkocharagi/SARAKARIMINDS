@@ -7,7 +7,8 @@ const {
     getBots,
     updatePreference,
     deleteConversation,
-    deleteSingleMessage
+    deleteSingleMessage,
+    markMessagesAsRead
 } = require('../controllers/messageController');
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -19,5 +20,6 @@ router.post('/', protect, upload.single('file'), sendMessage);
 router.put('/preference/:id', protect, updatePreference);
 router.delete('/conversation/:id', protect, deleteConversation);
 router.delete('/:id/single', protect, deleteSingleMessage);
+router.put('/read-all', protect, markMessagesAsRead);
 
 module.exports = router;

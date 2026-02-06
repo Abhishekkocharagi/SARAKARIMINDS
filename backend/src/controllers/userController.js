@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
+const Exam = require('../models/Exam');
 const generateToken = require('../utils/generateToken');
 
 // @desc    Register a new user
@@ -15,6 +16,11 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new Error('User already exists');
     }
 
+    // Sync with legacy fields
+    const preferredExams = req.body.preferredExams || [];
+    const selectedExamsData = await Exam.find({ _id: { $in: preferredExams } });
+    const examNames = selectedExamsData.map(e => e.name);
+
     const user = await User.create({
         name,
         email,
@@ -22,10 +28,43 @@ const registerUser = asyncHandler(async (req, res) => {
         mobile,
         accountType: 'Aspirant', // Enforce default
         role: 'student',         // Enforce default
-        exams
+        exams: examNames,
+        examHashtags: examNames,
+        preferredExams
     });
 
     if (user) {
+        // Streak Reset Logic
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        let updated = false;
+
+        if (user.lastDailyQuizAttemptDate) {
+            const last = new Date(user.lastDailyQuizAttemptDate);
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyQuizStreakCount > 0) {
+                user.dailyQuizStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        if (user.lastDailyGameAttemptDate) {
+            const last = new Date(user.lastDailyGameAttemptDate);
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyGameStreakCount > 0) {
+                user.dailyGameStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        if (updated) await user.save();
+
         res.status(201).json({
             _id: user._id,
             name: user.name,
@@ -39,6 +78,13 @@ const registerUser = asyncHandler(async (req, res) => {
             followersCount: user.followers.length,
             followingCount: user.following.length,
             role: user.role,
+            language: user.language,
+            preferredExams: user.preferredExams,
+            receiveAllNotifications: user.receiveAllNotifications,
+            isVerified: user.isVerified,
+            savedPosts: user.savedPosts,
+            dailyQuizStreakCount: user.dailyQuizStreakCount,
+            dailyGameStreakCount: user.dailyGameStreakCount
         });
     } else {
         res.status(400);
@@ -52,13 +98,64 @@ const registerUser = asyncHandler(async (req, res) => {
 const authUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate('preferredExams', 'name fullName category');
 
     if (user && (await user.matchPassword(password))) {
+        // Streak Reset Logic
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        let updated = false;
+
+        // Reset Quiz Streak
+        if (user.lastDailyQuizAttemptDate) {
+            const last = new Date(user.lastDailyQuizAttemptDate);
+            // If last attempt was before yesterday (UTC comparison safest by day diff)
+            const diffTime = Math.abs(now - last);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            // Check if same day (0) or yesterday (1). If > 1, reset.
+            // More precise: check if last date < yesterday start
+
+            // Simple approach: invalid if last attempt date is not today AND not yesterday
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyQuizStreakCount > 0) {
+                user.dailyQuizStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        // Reset Game Streak
+        if (user.lastDailyGameAttemptDate) {
+            const last = new Date(user.lastDailyGameAttemptDate);
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyGameStreakCount > 0) {
+                user.dailyGameStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        if (updated) await user.save();
+
         if (user.isBlocked) {
             res.status(403);
             throw new Error('Your account is blocked. Please contact support.');
         }
+
+        // Check if account is scheduled for deletion and cancel it
+        let deletionCancelled = false;
+        if (user.scheduledDeletionDate && new Date() < new Date(user.scheduledDeletionDate)) {
+            user.deletionRequestedAt = undefined;
+            user.scheduledDeletionDate = undefined;
+            await user.save();
+            deletionCancelled = true;
+        }
+
         res.json({
             _id: user._id,
             name: user.name,
@@ -72,7 +169,15 @@ const authUser = asyncHandler(async (req, res) => {
             followingCount: user.following.length,
             token: generateToken(user._id),
             role: user.role,
-            examHashtags: user.examHashtags || []
+            examHashtags: user.examHashtags || [],
+            language: user.language,
+            preferredExams: user.preferredExams,
+            receiveAllNotifications: user.receiveAllNotifications,
+            isVerified: user.isVerified,
+            savedPosts: user.savedPosts,
+            dailyQuizStreakCount: user.dailyQuizStreakCount,
+            dailyGameStreakCount: user.dailyGameStreakCount,
+            deletionCancelled: deletionCancelled
         });
     } else {
         res.status(401);
@@ -84,9 +189,40 @@ const authUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile
 // @access  Private
 const getUserProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).populate('preferredExams', 'name fullName category');
 
     if (user) {
+        // Streak Reset Logic
+        const now = new Date();
+        const yesterday = new Date(now);
+        yesterday.setDate(now.getDate() - 1);
+
+        let updated = false;
+
+        if (user.lastDailyQuizAttemptDate) {
+            const last = new Date(user.lastDailyQuizAttemptDate);
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyQuizStreakCount > 0) {
+                user.dailyQuizStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        if (user.lastDailyGameAttemptDate) {
+            const last = new Date(user.lastDailyGameAttemptDate);
+            const isToday = last.toDateString() === now.toDateString();
+            const isYesterday = last.toDateString() === yesterday.toDateString();
+
+            if (!isToday && !isYesterday && user.dailyGameStreakCount > 0) {
+                user.dailyGameStreakCount = 0;
+                updated = true;
+            }
+        }
+
+        if (updated) await user.save();
+
         res.json({
             _id: user._id,
             name: user.name,
@@ -99,7 +235,12 @@ const getUserProfile = asyncHandler(async (req, res) => {
             connections: user.connections,
             followers: user.followers,
             following: user.following,
-            examHashtags: user.examHashtags || []
+            examHashtags: user.examHashtags || [],
+            language: user.language,
+            preferredExams: user.preferredExams,
+            receiveAllNotifications: user.receiveAllNotifications,
+            isVerified: user.isVerified,
+            savedPosts: user.savedPosts
         });
     } else {
         res.status(404);
@@ -131,6 +272,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 
         user.name = req.body.name || user.name;
         user.about = req.body.about || user.about;
+        user.language = req.body.language || user.language;
 
         if (req.files) {
             if (req.files.profilePic) {
@@ -139,6 +281,29 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             if (req.files.coverPic) {
                 user.coverPic = req.files.coverPic[0].path;
             }
+        }
+
+        if (req.body.preferredExams) {
+            try {
+                const pExams = typeof req.body.preferredExams === 'string' ? JSON.parse(req.body.preferredExams) : req.body.preferredExams;
+                if (pExams.length > 5) {
+                    res.status(400);
+                    throw new Error('Maximum 5 preferred exams allowed');
+                }
+                user.preferredExams = pExams;
+
+                // Sync legacy fields
+                const selectedExamsData = await Exam.find({ _id: { $in: pExams } });
+                const examNames = selectedExamsData.map(e => e.name);
+                user.exams = examNames;
+                user.examHashtags = examNames;
+            } catch (e) {
+                console.error('Error parsing preferredExams:', e);
+            }
+        }
+
+        if (req.body.receiveAllNotifications !== undefined) {
+            user.receiveAllNotifications = req.body.receiveAllNotifications === 'true' || req.body.receiveAllNotifications === true;
         }
 
         if (req.body.exams) {
@@ -169,7 +334,8 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             user.password = req.body.password;
         }
 
-        const updatedUser = await user.save();
+        const savedUser = await user.save();
+        const updatedUser = await User.findById(savedUser._id).populate('preferredExams', 'name fullName category');
         res.json({
             _id: updatedUser._id,
             name: updatedUser.name,
@@ -185,7 +351,14 @@ const updateUserProfile = asyncHandler(async (req, res) => {
             followingCount: updatedUser.following.length,
             token: generateToken(updatedUser._id),
             role: updatedUser.role,
-            examHashtags: updatedUser.examHashtags || []
+            examHashtags: updatedUser.examHashtags || [],
+            language: updatedUser.language,
+            preferredExams: updatedUser.preferredExams,
+            receiveAllNotifications: updatedUser.receiveAllNotifications,
+            isVerified: updatedUser.isVerified,
+            savedPosts: updatedUser.savedPosts,
+            dailyQuizStreakCount: updatedUser.dailyQuizStreakCount,
+            dailyGameStreakCount: updatedUser.dailyGameStreakCount
         });
     } else {
         res.status(404);
@@ -201,12 +374,25 @@ const applyMentor = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+        // Handle document upload
+        let documentPath = '';
+        if (req.file) {
+            documentPath = req.file.path;
+        }
+
         user.mentorApplication = {
             status: 'pending',
-            appliedAt: new Date()
+            appliedAt: new Date(),
+            documents: documentPath ? [documentPath] : []
         };
         user.experience = experience;
-        user.expertise = Array.isArray(expertise) ? expertise : [expertise];
+
+        // Handle expertise - could be string or array
+        if (typeof expertise === 'string') {
+            user.expertise = expertise.split(',').map(s => s.trim());
+        } else {
+            user.expertise = Array.isArray(expertise) ? expertise : [expertise];
+        }
 
         // Also update the convenience status field
         user.mentorApplicationStatus = 'pending';
@@ -227,9 +413,16 @@ const applyAcademy = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (user) {
+        // Handle document upload
+        let documentPath = '';
+        if (req.file) {
+            documentPath = req.file.path;
+        }
+
         user.academyApplication = {
             status: 'pending',
-            appliedAt: new Date()
+            appliedAt: new Date(),
+            documents: documentPath ? [documentPath] : []
         };
         user.academyDetails = {
             academyName,
@@ -260,7 +453,8 @@ const getUserById = asyncHandler(async (req, res) => {
         .select('-password')
         .populate('connections', 'name profilePic accountType')
         .populate('followers', 'name profilePic')
-        .populate('following', 'name profilePic');
+        .populate('following', 'name profilePic')
+        .populate('preferredExams', 'name fullName category');
 
     if (user) {
         // Check connection status with the current user
@@ -384,6 +578,125 @@ const clearRecentSearches = asyncHandler(async (req, res) => {
     res.json({ message: 'Recent searches cleared' });
 });
 
+// @desc    Change user password
+// @route   PUT /api/users/change-password
+// @access  Private
+const changePassword = asyncHandler(async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+        res.status(401);
+        throw new Error('Current password is incorrect');
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+});
+
+// @desc    Change user email
+// @route   PUT /api/users/change-email
+// @access  Private
+const changeEmail = asyncHandler(async (req, res) => {
+    const { newEmail, password } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Verify password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+        res.status(401);
+        throw new Error('Password is incorrect');
+    }
+
+    // Check if email already exists
+    const emailExists = await User.findOne({ email: newEmail });
+    if (emailExists) {
+        res.status(400);
+        throw new Error('Email already in use');
+    }
+
+    // Update email
+    user.email = newEmail;
+    await user.save();
+
+    res.json({ message: 'Email changed successfully', email: user.email });
+});
+
+// @desc    Delete user account with password verification (30-day grace period)
+// @route   DELETE /api/users/delete-account
+// @access  Private
+const deleteAccount = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Verify password
+    const isMatch = await user.matchPassword(password);
+    if (!isMatch) {
+        res.status(401);
+        throw new Error('Password is incorrect');
+    }
+
+    // Schedule deletion for 30 days from now
+    const deletionDate = new Date();
+    deletionDate.setDate(deletionDate.getDate() + 30);
+
+    user.deletionRequestedAt = new Date();
+    user.scheduledDeletionDate = deletionDate;
+    await user.save();
+
+    res.json({
+        message: 'Account deletion scheduled. You have 30 days to cancel by logging in.',
+        scheduledDeletionDate: deletionDate
+    });
+});
+
+// @desc    Update notification preferences
+// @route   PUT /api/users/notification-preferences
+// @access  Private
+const updateNotificationPreferences = asyncHandler(async (req, res) => {
+    const { notificationPreferences } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        res.status(404);
+        throw new Error('User not found');
+    }
+
+    // Update notification preferences
+    user.notificationPreferences = {
+        ...user.notificationPreferences,
+        ...notificationPreferences
+    };
+
+    await user.save();
+
+    res.json({
+        message: 'Notification preferences updated successfully',
+        notificationPreferences: user.notificationPreferences
+    });
+});
+
 // @desc    Delete user account
 // @route   DELETE /api/users/profile
 // @access  Private
@@ -443,5 +756,9 @@ module.exports = {
     clearRecentSearches,
     deleteUser,
     applyMentor,
-    applyAcademy
+    applyAcademy,
+    changePassword,
+    changeEmail,
+    deleteAccount,
+    updateNotificationPreferences
 };
