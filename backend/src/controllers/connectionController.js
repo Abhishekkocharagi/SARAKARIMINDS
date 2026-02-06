@@ -204,6 +204,17 @@ const withdrawRequest = asyncHandler(async (req, res) => {
     }
 });
 
+// @desc    Mark all pending requests as seen
+// @route   PUT /api/connections/mark-seen
+// @access  Private
+const markRequestsAsSeen = asyncHandler(async (req, res) => {
+    await Connection.updateMany(
+        { recipient: req.user._id, status: 'pending', isSeen: false },
+        { isSeen: true }
+    );
+    res.json({ message: 'Requests marked as seen' });
+});
+
 module.exports = {
     sendConnectionRequest,
     respondToRequest,
@@ -212,5 +223,6 @@ module.exports = {
     getConnections,
     getSuggestions,
     removeConnection,
-    withdrawRequest
+    withdrawRequest,
+    markRequestsAsSeen
 };

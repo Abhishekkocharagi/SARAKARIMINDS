@@ -72,7 +72,11 @@ export default function AdminAds() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user?.token}`
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    // Ensure end date is set to end of the day
+                    endDate: `${formData.endDate}T23:59:59.999Z`
+                })
             });
             if (res.ok) {
                 alert(editingAd ? 'Ad updated!' : 'Ad created!');

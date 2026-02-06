@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function ResetPassword() {
+    const { t } = useLanguage();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -31,11 +33,11 @@ export default function ResetPassword() {
                 setTokenValid(true);
                 setEmail(data.email);
             } else {
-                setError(data.message || 'Invalid or expired reset link');
+                setError(data.message || t('auth.invalid_token'));
                 setTokenValid(false);
             }
         } catch (err) {
-            setError('Network error. Please try again.');
+            setError(t('auth.conn_failed'));
             setTokenValid(false);
         } finally {
             setVerifying(false);
@@ -48,12 +50,12 @@ export default function ResetPassword() {
 
         // Validation
         if (password.length < 6) {
-            setError('Password must be at least 6 characters long');
+            setError(t('auth.len6'));
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError(t('auth.matching'));
             return;
         }
 
@@ -74,10 +76,10 @@ export default function ResetPassword() {
                     router.push('/login');
                 }, 3000);
             } else {
-                setError(data.message || 'Failed to reset password');
+                setError(data.message || t('auth.reg_fail')); // Using registration fail as a fallback
             }
         } catch (err) {
-            setError('Network error. Please try again.');
+            setError(t('auth.conn_failed'));
         } finally {
             setLoading(false);
         }
@@ -88,7 +90,7 @@ export default function ResetPassword() {
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-600 font-bold">Verifying reset link...</p>
+                    <p className="text-gray-600 font-bold">{t('auth.reset_password.verifying')}</p>
                 </div>
             </div>
         );
@@ -99,24 +101,26 @@ export default function ResetPassword() {
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
-                        <Link href="/" className="text-4xl font-black text-blue-700">SarkariMinds</Link>
+                        <Link href="/" className="inline-block">
+                            <img src="/logo_full.png" alt="SarkariMinds" className="h-12 w-auto object-contain mx-auto" />
+                        </Link>
                     </div>
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 text-center">
                         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-4xl">❌</span>
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-3">Invalid Reset Link</h2>
+                        <h2 className="text-2xl font-black text-gray-900 mb-3">{t('auth.invalid_token')}</h2>
                         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-6">
                             {error}
                         </div>
                         <p className="text-sm text-gray-600 mb-6">
-                            This password reset link is invalid or has expired. Please request a new one.
+                            {t('auth.reset_password.invalid_desc')}
                         </p>
                         <Link
                             href="/forgot-password"
                             className="block w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition-all text-center"
                         >
-                            Request New Link
+                            {t('auth.reset_password.request_new')}
                         </Link>
                     </div>
                 </div>
@@ -129,15 +133,17 @@ export default function ResetPassword() {
             <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8">
-                        <Link href="/" className="text-4xl font-black text-blue-700">SarkariMinds</Link>
+                        <Link href="/" className="inline-block">
+                            <img src="/logo_full.png" alt="SarkariMinds" className="h-12 w-auto object-contain mx-auto" />
+                        </Link>
                     </div>
                     <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 text-center">
                         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-4xl">✅</span>
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-3">Password Reset Successful!</h2>
+                        <h2 className="text-2xl font-black text-gray-900 mb-3">{t('auth.reset_success')}</h2>
                         <p className="text-sm text-gray-600 mb-6">
-                            Your password has been changed successfully. Redirecting to login...
+                            {t('auth.reset_password.success_desc')}
                         </p>
                         <div className="flex items-center justify-center space-x-2 text-blue-600">
                             <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
@@ -155,8 +161,8 @@ export default function ResetPassword() {
             <div className="w-full max-w-md">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <Link href="/" className="text-4xl font-black text-blue-700 hover:text-blue-800 transition-colors">
-                        SarkariMinds
+                    <Link href="/" className="inline-block">
+                        <img src="/logo_full.png" alt="SarkariMinds" className="h-12 w-auto object-contain mx-auto" />
                     </Link>
                     <p className="text-sm text-gray-600 mt-2 font-medium">Professional Network for Aspirants</p>
                 </div>
@@ -167,16 +173,16 @@ export default function ResetPassword() {
                         <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="text-3xl">🔑</span>
                         </div>
-                        <h2 className="text-2xl font-black text-gray-900 mb-2">Create New Password</h2>
+                        <h2 className="text-2xl font-black text-gray-900 mb-2">{t('auth.reset_pass_title')}</h2>
                         <p className="text-sm text-gray-600">
-                            Enter a new password for <strong>{email}</strong>
+                            {t('auth.reset_password.enter_for')} <strong>{email}</strong>
                         </p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
-                                New Password
+                                {t('auth.new_pass')}
                             </label>
                             <div className="relative">
                                 <input
@@ -184,7 +190,7 @@ export default function ResetPassword() {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
-                                    placeholder="Enter new password"
+                                    placeholder={t('auth.new_pass')}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all pr-12"
                                 />
                                 <button
@@ -195,19 +201,19 @@ export default function ResetPassword() {
                                     {showPassword ? '👁️' : '👁️‍🗨️'}
                                 </button>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
+                            <p className="text-xs text-gray-500 mt-1">{t('auth.reset_password.min_chars')}</p>
                         </div>
 
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">
-                                Confirm Password
+                                {t('auth.confirm_new_pass')}
                             </label>
                             <input
                                 type={showPassword ? 'text' : 'password'}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
-                                placeholder="Confirm new password"
+                                placeholder={t('auth.confirm_new_pass')}
                                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
                             />
                         </div>
@@ -221,9 +227,9 @@ export default function ResetPassword() {
                                     <div className={`h-1 flex-1 rounded ${/[A-Z]/.test(password) && /[0-9]/.test(password) ? 'bg-green-500' : 'bg-gray-200'}`}></div>
                                 </div>
                                 <p className="text-xs text-gray-600">
-                                    {password.length < 6 && 'Weak password'}
-                                    {password.length >= 6 && password.length < 8 && 'Good password'}
-                                    {password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && 'Strong password'}
+                                    {password.length < 6 && t('auth.reset_password.weak')}
+                                    {password.length >= 6 && password.length < 8 && t('auth.reset_password.good')}
+                                    {password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password) && t('auth.reset_password.strong')}
                                 </p>
                             </div>
                         )}
@@ -245,10 +251,10 @@ export default function ResetPassword() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                     </svg>
-                                    Resetting...
+                                    {t('auth.reset_password.resetting')}
                                 </span>
                             ) : (
-                                'Reset Password'
+                                t('auth.update_pass')
                             )}
                         </button>
                     </form>
@@ -258,7 +264,7 @@ export default function ResetPassword() {
                             href="/login"
                             className="text-sm font-bold text-blue-600 hover:text-blue-700 transition-colors"
                         >
-                            ← Back to Login
+                            ← {t('auth.back_to_login')}
                         </Link>
                     </div>
                 </div>

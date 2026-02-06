@@ -7,7 +7,7 @@ const { createNotification } = require('../utils/notificationHelper');
 // @route   POST /api/stories
 // @access  Private
 const createStory = asyncHandler(async (req, res) => {
-    const { content, mentions, tags } = req.body;
+    const { content, mentions, tags, sharedPost } = req.body;
     let mediaUrl = '';
     let mediaType = 'image';
 
@@ -21,6 +21,7 @@ const createStory = asyncHandler(async (req, res) => {
         content,
         mediaUrl,
         mediaType,
+        sharedPost,
         mentions: mentions ? JSON.parse(mentions) : [],
         tags: tags ? JSON.parse(tags) : []
     });
@@ -30,11 +31,15 @@ const createStory = asyncHandler(async (req, res) => {
     // Notify mentioned users
     if (story.mentions && story.mentions.length > 0) {
         for (const mentionId of story.mentions) {
-            await createNotification(mentionId, req.user._id, 'new_post', null, createdStory._id);
+            if (mentionId.toString() !== req.user._id.toString()) {
+                await createNotification(mentionId, req.user._id, 'mention', null, createdStory._id);
+            }
         }
     }
 
-    const populated = await Story.findById(createdStory._id).populate('user', 'name profilePic');
+    const populated = await Story.findById(createdStory._id)
+        .populate('user', 'name profilePic')
+        .populate('mentions', 'name');
     res.status(201).json(populated);
 });
 
@@ -57,7 +62,9 @@ const getStories = asyncHandler(async (req, res) => {
         expiresAt: { $gt: new Date() }
     })
         .populate('user', 'name profilePic')
+        .populate('user', 'name profilePic')
         .populate('mentions', 'name')
+        .populate({ path: 'sharedPost', populate: { path: 'user', select: 'name profilePic' } })
         .sort({ createdAt: -1 }); // Newest first
     res.json(stories);
 });
@@ -130,7 +137,57 @@ const replyStory = asyncHandler(async (req, res) => {
             await createNotification(story.user, req.user._id, 'story_reply', null, story._id);
         }
 
+        // Notify mentioned users in reply
+        const mentions = text.match(/@[\w\s.-]+/g);
+        if (mentions) {
+            const User = require('../models/User'); // Ensure User model is available
+            for (const mention of mentions) {
+                const name = mention.substring(1).trim();
+                const mentionedUser = await User.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+                if (mentionedUser && mentionedUser._id.toString() !== req.user._id.toString()) {
+                    await createNotification(mentionedUser._id, req.user._id, 'mention', null, story._id);
+                }
+            }
+        }
+
         res.status(201).json(message);
+    } else {
+        res.status(404);
+        throw new Error('Story not found');
+    }
+});
+
+// @desc    Delete a story
+// @route   DELETE /api/stories/:id
+// @access  Private
+const deleteStory = asyncHandler(async (req, res) => {
+    const story = await Story.findById(req.params.id);
+
+    if (story) {
+        if (story.user.toString() !== req.user._id.toString()) {
+            res.status(401);
+            throw new Error('Not authorized to delete this story');
+        }
+        await story.deleteOne();
+        res.json({ message: 'Story removed' });
+    } else {
+        res.status(404);
+        throw new Error('Story not found');
+    }
+});
+
+// @desc    Get story viewers
+// @route   GET /api/stories/:id/viewers
+// @access  Private
+const getStoryViewers = asyncHandler(async (req, res) => {
+    const story = await Story.findById(req.params.id).populate('viewers', 'name profilePic');
+
+    if (story) {
+        if (story.user.toString() !== req.user._id.toString()) {
+            res.status(401);
+            throw new Error('Not authorized to see viewers of this story');
+        }
+        res.json(story.viewers);
     } else {
         res.status(404);
         throw new Error('Story not found');
@@ -142,5 +199,7 @@ module.exports = {
     getStories,
     viewStory,
     reactStory,
-    replyStory
+    replyStory,
+    deleteStory,
+    getStoryViewers
 };

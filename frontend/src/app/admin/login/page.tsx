@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
                         🛡️
                     </div>
                     <h1 className="text-3xl font-black text-white">Admin Access</h1>
-                    <p className="text-gray-400 mt-2">Secure entry for NammaSarkaari administrators</p>
+                    <p className="text-gray-400 mt-2">Secure entry for SarkariMinds administrators</p>
                 </div>
 
                 {error && (
@@ -67,7 +67,7 @@ export default function AdminLoginPage() {
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full bg-gray-800 border border-gray-700 text-white p-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-                            placeholder="admin@nammasarkaari.com"
+                            placeholder="admin@sarkariminds.com"
                             required
                         />
                     </div>

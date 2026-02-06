@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import StoryBar from '@/components/StoryBar';
-import PostBox from '@/components/PostBox';
+import PostModal from '@/components/PostModal';
 import PostCard from '@/components/PostCard';
 import AdCard from '@/components/AdCard';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function Feed() {
     const [posts, setPosts] = useState<any[]>([]);
@@ -18,8 +20,11 @@ export default function Feed() {
     const [examNews, setExamNews] = useState<any[]>([]);
     const [selectedNews, setSelectedNews] = useState<any>(null);
     const [isPrefModalOpen, setIsPrefModalOpen] = useState(false);
-    const [prefHashtags, setPrefHashtags] = useState('');
+    const [selectedExams, setSelectedExams] = useState<string[]>([]);
+    const [allExams, setAllExams] = useState<any[]>([]);
+    const [isPostModalOpen, setIsPostModalOpen] = useState(false);
     const { user, updateUser, logout, loading: authLoading } = useAuth();
+    const { t, language } = useLanguage();
     const router = useRouter();
 
     useEffect(() => {
@@ -50,14 +55,6 @@ export default function Feed() {
             if (res.ok) {
                 const data = await res.json();
                 setExamNews(data);
-
-                // Record views for each news item displayed
-                data.forEach((item: any) => {
-                    fetch(`http://localhost:5000/api/exam-news/${item._id}/view`, {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${user?.token}` }
-                    }).catch(err => console.error('Failed to record view:', err));
-                });
             }
         } catch (err) {
             console.error('Failed to fetch exam news:', err);
@@ -85,9 +82,12 @@ export default function Feed() {
 
             const data = await res.json();
 
+
             // Ensure data is an array before setting state
             if (Array.isArray(data)) {
-                setPosts(data);
+                // Prevent duplicate keys
+                const uniquePosts = Array.from(new Map(data.map((item: any) => [item._id, item])).values());
+                setPosts(uniquePosts);
             } else {
                 console.error('API returned non-array data:', data);
                 setPosts([]);
@@ -100,69 +100,105 @@ export default function Feed() {
         }
     };
 
+    const fetchAllExams = async () => {
+        try {
+            const res = await fetch('http://localhost:5000/api/exams');
+            if (res.ok) setAllExams(await res.json());
+        } catch (err) { console.error(err); }
+    };
+
     useEffect(() => {
         if (user) {
             fetchPosts();
             fetchAds();
             fetchExamNews();
-            setPrefHashtags(user.examHashtags?.join(', ') || '');
+            fetchAllExams();
+            setSelectedExams(user.preferredExams?.map((e: any) => e._id || e) || []);
+
+            // Update last visit timestamp
+            fetch('http://localhost:5000/api/posts/last-visit', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            }).then(() => {
+                window.dispatchEvent(new Event('notificationsUpdated'));
+            }).catch(console.error);
         }
     }, [user]);
 
-    const handleSavePrefs = async () => {
-        const hashtagsArray = prefHashtags.split(',').map(tag => {
-            const trimmed = tag.trim();
-            if (!trimmed) return null;
-            return trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
-        }).filter(Boolean);
+    // Record view when a news item is selected
+    useEffect(() => {
+        if (selectedNews && user) {
+            fetch(`http://localhost:5000/api/exam-news/${selectedNews._id}/view`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    // Update views count for the selected news locally
+                    if (data.viewsCount !== undefined) {
+                        setExamNews(prev => prev.map(news =>
+                            news._id === selectedNews._id
+                                ? { ...news, views: new Array(data.viewsCount).fill(null) }
+                                : news
+                        ));
+                    }
+                })
+                .catch(err => console.error('Failed to record view:', err));
+        }
+    }, [selectedNews, user]);
 
+    const handleSavePrefs = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/users/profile', {
-                method: 'PUT',
+            const res = await fetch('http://localhost:5000/api/exams/select', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user?.token}`
                 },
-                body: JSON.stringify({ examHashtags: hashtagsArray })
+                body: JSON.stringify({ preferredExamIds: selectedExams })
             });
 
             if (res.status === 401) {
-                alert('Your session has expired. Please log in again.');
+                alert(t('auth.session_expired'));
                 logout();
                 return;
             }
 
             if (res.ok) {
-                const updatedUser = await res.json();
-                updateUser({ examHashtags: updatedUser.examHashtags });
+                const data = await res.json();
+                updateUser({
+                    preferredExams: data.preferredExams,
+                    exams: data.exams,
+                    examHashtags: data.examHashtags
+                });
                 setIsPrefModalOpen(false);
-                setTimeout(() => fetchExamNews(), 500); // Small delay to ensure DB propagation
+                setTimeout(() => fetchExamNews(), 500);
             } else {
-                alert('Failed to save preferences. Please try again.');
+                alert(t('auth.save_fail'));
             }
         } catch (err) {
             console.error('Failed to save preferences:', err);
-            alert('Cannot connect to server. Please check if the backend is running on http://localhost:5000');
+            alert(t('auth.server_error'));
         }
     };
 
-    if (authLoading || !user) return <div className="p-10 text-center">Loading community...</div>;
+    if (authLoading || !user) return <div className="p-10 text-center">{t('common.loading')}</div>;
 
     const AD_EVERY_N_POSTS = 4;
 
     const timeAgo = (date: string) => {
         const seconds = Math.floor((new Date().getTime() - new Date(date).getTime()) / 1000);
         let interval = seconds / 31536000;
-        if (interval > 1) return Math.floor(interval) + "y ago";
+        if (interval > 1) return Math.floor(interval) + t('time.y') + " " + t('time.ago');
         interval = seconds / 2592000;
-        if (interval > 1) return Math.floor(interval) + "mo ago";
+        if (interval > 1) return Math.floor(interval) + t('time.mo') + " " + t('time.ago');
         interval = seconds / 86400;
-        if (interval > 1) return Math.floor(interval) + "d ago";
+        if (interval > 1) return Math.floor(interval) + t('time.d') + " " + t('time.ago');
         interval = seconds / 3600;
-        if (interval > 1) return Math.floor(interval) + "h ago";
+        if (interval > 1) return Math.floor(interval) + t('time.h') + " " + t('time.ago');
         interval = seconds / 60;
-        if (interval > 1) return Math.floor(interval) + "m ago";
-        return Math.floor(seconds) + "s ago";
+        if (interval > 1) return Math.floor(interval) + t('time.m') + " " + t('time.ago');
+        return Math.floor(seconds) + t('time.s') + " " + t('time.ago');
     };
 
     // Helper to render text with links
@@ -189,24 +225,26 @@ export default function Feed() {
     return (
         <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
-            <main className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 md:grid-cols-12 gap-6">
+            <main className="max-w-7xl mx-auto px-6 pb-10 pt-6 flex flex-col md:flex-row gap-6">
                 {/* Left Sidebar */}
-                <div className="md:col-span-3 hidden md:block">
+                <div className="hidden md:block w-[280px] shrink-0">
                     <Sidebar />
                 </div>
 
                 {/* Feed Content */}
-                <div className="md:col-span-6 space-y-4">
+                <div className="flex-1 min-w-0 space-y-4">
                     <StoryBar />
-                    <PostBox refreshPosts={fetchPosts} />
 
                     {loading ? (
-                        <div className="text-center py-10 text-gray-400">Loading posts...</div>
+                        <div className="text-center py-10 text-gray-400">{t('common.loading')}</div>
                     ) : (
                         <div className="space-y-4">
                             {posts.map((post: any, index: number) => (
                                 <React.Fragment key={post._id}>
-                                    <PostCard post={post} />
+                                    <PostCard
+                                        post={post}
+                                        onDelete={(postId) => setPosts(prev => prev.filter(p => p._id !== postId))}
+                                    />
                                     {feedAd && (index + 1) % AD_EVERY_N_POSTS === 0 && (
                                         <AdCard ad={feedAd} variant="feed" />
                                     )}
@@ -214,7 +252,7 @@ export default function Feed() {
                             ))}
                             {posts.length === 0 && (
                                 <div className="bg-white border rounded-xl p-10 text-center text-gray-500">
-                                    No posts yet. Be the first to share an update!
+                                    {t('common.no_posts')}
                                 </div>
                             )}
                         </div>
@@ -222,11 +260,10 @@ export default function Feed() {
                 </div>
 
                 {/* Right Sidebar */}
-                <div className="md:col-span-3 hidden md:block">
+                <div className="hidden lg:block w-[280px] shrink-0">
                     <div className="bg-white border rounded-xl p-4 shadow-sm">
                         <header className="flex justify-between items-center mb-4">
-                            <h4 className="font-bold text-gray-700">Exam News (Karnataka)</h4>
-                            <span className="animate-pulse bg-red-500 w-2 h-2 rounded-full"></span>
+                            <h4 className="font-bold text-gray-700">{t('sidebar.exam_news')}</h4>                           <span className="animate-pulse bg-red-500 w-2 h-2 rounded-full"></span>
                         </header>
 
                         <div className="space-y-4">
@@ -247,24 +284,22 @@ export default function Feed() {
                                                 </p>
                                                 <span className="text-[10px] text-gray-300">•</span>
                                                 <p className="text-[10px] text-gray-400 font-bold uppercase">
-                                                    {news.views?.length || 0} {news.views?.length === 1 ? 'reader' : 'readers'}
-                                                </p>
-                                            </div>
+                                                    {news.views?.length || 0} {news.views?.length === 1 ? t('news.reader') : t('news.readers')}
+                                                </p>                                           </div>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
                                 <div className="py-6 text-center">
                                     <p className="text-2xl mb-2">🗞️</p>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-tight">No exam updates for your selected exams</p>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-tight">{t('news.no_updates')}</p>
                                     <button
                                         onClick={() => setIsPrefModalOpen(true)}
                                         className="text-[10px] text-blue-600 font-black uppercase mt-2 hover:underline"
                                     >
-                                        Edit Preferences
+                                        {t('news.edit_prefs')}
                                     </button>
-                                </div>
-                            )}
+                                </div>)}
                         </div>
                     </div>
 
@@ -272,7 +307,7 @@ export default function Feed() {
                         onClick={() => setIsPrefModalOpen(true)}
                         className="w-full mt-4 py-3 bg-white border border-gray-100 rounded-xl text-[10px] font-black uppercase text-blue-600 hover:bg-blue-50 transition"
                     >
-                        ⚙️ Update Exam Preferences
+                        ⚙️ {t('sidebar.update_prefs')}
                     </button>
 
                     {/* Sponsored Section */}
@@ -286,22 +321,34 @@ export default function Feed() {
                     <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
                         <div className="p-8 border-b flex justify-between items-center bg-gray-50">
                             <div>
-                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Exam Preferences</h2>
-                                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Select your exam hashtags</p>
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">{t('news.prefs_title')}</h2>
+                                <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{t('news.prefs_desc')}</p>
                             </div>
                             <button onClick={() => setIsPrefModalOpen(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
                         </div>
                         <div className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Your Exam Hashtags</label>
-                                <input
-                                    type="text"
-                                    value={prefHashtags}
-                                    onChange={(e) => setPrefHashtags(e.target.value)}
-                                    placeholder="e.g. KPSCKAS, FDA, PSI"
-                                    className="w-full px-4 py-4 bg-gray-50 border rounded-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none transition"
-                                />
-                                <p className="text-[10px] text-gray-400 italic">Separate hashtags with commas. We will prefix # automatically.</p>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Select Your Target Exams</label>
+                                <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                                    {allExams.map(exam => (
+                                        <label key={exam._id} className={`flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition ${selectedExams.includes(exam._id) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedExams.includes(exam._id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        if (selectedExams.length >= 5) return alert('Maximum 5 exams allowed');
+                                                        setSelectedExams([...selectedExams, exam._id]);
+                                                    }
+                                                    else setSelectedExams(selectedExams.filter(id => id !== exam._id));
+                                                }}
+                                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                            />
+                                            <span className="text-xs font-bold text-gray-700">{exam.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[10px] text-gray-400 italic">You will receive notifications for selected exams.</p>
                             </div>
 
                             <div className="flex gap-4">
@@ -309,13 +356,13 @@ export default function Feed() {
                                     onClick={handleSavePrefs}
                                     className="flex-1 px-6 py-4 bg-blue-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-500/20"
                                 >
-                                    Save & Update Feed
+                                    {t('news.save_prefs')}
                                 </button>
                                 <button
                                     onClick={() => setIsPrefModalOpen(false)}
                                     className="px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-gray-200"
                                 >
-                                    Cancel
+                                    {t('common.cancel')}
                                 </button>
                             </div>
                         </div>
@@ -342,7 +389,7 @@ export default function Feed() {
                                 <div className="flex items-center gap-3">
                                     <p className="text-xs text-gray-400 font-bold uppercase">{timeAgo(selectedNews.createdAt)}</p>
                                     <span className="text-gray-300">•</span>
-                                    <p className="text-xs text-gray-400 font-bold uppercase">{selectedNews.views?.length || 0} Readers</p>
+                                    <p className="text-xs text-gray-400 font-bold uppercase">{selectedNews.views?.length || 0} {selectedNews.views?.length === 1 ? t('news.reader') : t('news.readers')}</p>
                                 </div>
                             </div>
                             <button onClick={() => setSelectedNews(null)} className="text-gray-400 hover:text-gray-600 text-2xl p-2 bg-white rounded-full shadow-sm">✕</button>
@@ -352,12 +399,12 @@ export default function Feed() {
                                 {renderDescription(selectedNews.description)}
                             </div>
                             <div className="mt-10 pt-8 border-t border-gray-100 flex justify-between items-center">
-                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">Official Update • SarkariMinds Team</p>
+                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('news.official_update')}</p>
                                 <button
                                     onClick={() => setSelectedNews(null)}
                                     className="px-8 py-3 bg-blue-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-500/20"
                                 >
-                                    Close Update
+                                    {t('news.close')}
                                 </button>
                             </div>
                         </div>

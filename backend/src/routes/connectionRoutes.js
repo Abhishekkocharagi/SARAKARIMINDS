@@ -8,7 +8,8 @@ const {
     getSuggestions,
     removeConnection,
     getSentRequests,
-    withdrawRequest
+    withdrawRequest,
+    markRequestsAsSeen
 } = require('../controllers/connectionController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -21,5 +22,6 @@ router.post('/request', protect, sendConnectionRequest);
 router.put('/respond', protect, respondToRequest);
 router.delete('/withdraw/:id', protect, withdrawRequest);
 router.delete('/:id', protect, removeConnection);
+router.put('/mark-seen', protect, markRequestsAsSeen);
 
 module.exports = router;

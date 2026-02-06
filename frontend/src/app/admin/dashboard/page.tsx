@@ -14,6 +14,7 @@ interface Stats {
 
 export default function AdminDashboard() {
     const { user } = useAuth();
+    const router = useRouter();
     const [stats, setStats] = useState<Stats | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -80,6 +81,20 @@ export default function AdminDashboard() {
                 <div className="bg-gray-900 rounded-3xl p-8 text-white">
                     <h3 className="text-xl font-bold mb-4">Admin Quick Links</h3>
                     <div className="grid grid-cols-2 gap-4">
+                        <button
+                            onClick={() => router.push('/admin/quiz')}
+                            className="bg-gray-800 hover:bg-gray-700 p-4 rounded-2xl text-left transition"
+                        >
+                            <span className="block text-2xl mb-2">⭐</span>
+                            <span className="font-bold">Daily Quiz</span>
+                        </button>
+                        <button
+                            onClick={() => router.push('/admin/puzzle')}
+                            className="bg-gray-800 hover:bg-gray-700 p-4 rounded-2xl text-left transition"
+                        >
+                            <span className="block text-2xl mb-2">🧩</span>
+                            <span className="font-bold">Puzzle Zone</span>
+                        </button>
                         <button className="bg-gray-800 hover:bg-gray-700 p-4 rounded-2xl text-left transition">
                             <span className="block text-2xl mb-2">📢</span>
                             <span className="font-bold">Clear Broadcast</span>

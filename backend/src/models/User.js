@@ -43,11 +43,23 @@ const userSchema = new mongoose.Schema({
     experience: String, // For mentors
     expertise: [String], // For mentors
 
+    // Mentor Monetization
+    mentorshipEnabled: { type: Boolean, default: false },
+    mentorshipPrice: { type: Number, default: 0 },
+    mentorEarnings: { type: Number, default: 0 },
+    availabilitySlots: [{
+        day: String,
+        startTime: String,
+        endTime: String,
+        isBooked: { type: Boolean, default: false },
+        bookedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+    }],
+
     // Mentor Application Details
     mentorApplication: {
         status: {
             type: String,
-            enum: ['none', 'pending', 'approved', 'rejected'],
+            enum: ['none', 'pending', 'approved', 'rejected', 'revoked'],
             default: 'none'
         },
         appliedAt: Date,
@@ -65,7 +77,7 @@ const userSchema = new mongoose.Schema({
     academyApplication: {
         status: {
             type: String,
-            enum: ['none', 'pending', 'approved', 'rejected'],
+            enum: ['none', 'pending', 'approved', 'rejected', 'revoked'],
             default: 'none'
         },
         appliedAt: Date,
@@ -100,6 +112,12 @@ const userSchema = new mongoose.Schema({
     },
     botType: String,
 
+    isVerified: {
+        type: Boolean,
+        default: false
+    },
+    verificationApprovedAt: Date,
+
     // Admin fields
     isBlocked: {
         type: Boolean,
@@ -107,15 +125,69 @@ const userSchema = new mongoose.Schema({
     },
     mentorApplicationStatus: {
         type: String,
-        enum: ['none', 'pending', 'approved', 'rejected'],
+        enum: ['none', 'pending', 'approved', 'rejected', 'revoked'],
         default: 'none'
     },
     academyApplicationStatus: {
         type: String,
-        enum: ['none', 'pending', 'approved', 'rejected'],
+        enum: ['none', 'pending', 'approved', 'rejected', 'revoked'],
         default: 'none'
     },
-    examHashtags: [String]
+    examHashtags: [String],
+    language: {
+        type: String,
+        enum: ['en', 'kn', 'hi'],
+        default: 'en'
+    },
+    preferredExams: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Exam'
+    }],
+    savedPosts: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post'
+    }],
+    receiveAllNotifications: {
+        type: Boolean,
+        default: false
+    },
+    notificationPreferences: {
+        emailDigest: { type: Boolean, default: true },
+        postLikes: { type: Boolean, default: true },
+        postComments: { type: Boolean, default: true },
+        newFollowers: { type: Boolean, default: true },
+        connectionRequests: { type: Boolean, default: true },
+        mentions: { type: Boolean, default: true },
+        messages: { type: Boolean, default: true }
+    },
+
+    // Dual Streak System
+    dailyQuizStreakCount: {
+        type: Number,
+        default: 0
+    },
+    lastDailyQuizAttemptDate: {
+        type: Date
+    },
+    dailyGameStreakCount: {
+        type: Number,
+        default: 0
+    },
+    lastDailyGameAttemptDate: {
+        type: Date
+    },
+    lastFeedVisit: {
+        type: Date,
+        default: Date.now
+    },
+
+    // Account Deletion Grace Period
+    deletionRequestedAt: {
+        type: Date
+    },
+    scheduledDeletionDate: {
+        type: Date
+    }
 
 }, {
     timestamps: true

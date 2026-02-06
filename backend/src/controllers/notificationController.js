@@ -49,27 +49,38 @@ const Message = require('../models/Message');
 const Connection = require('../models/Connection');
 
 const getUnreadCounts = asyncHandler(async (req, res) => {
+    const Post = require('../models/Post');
     // Count distinct senders for unread messages
     const unreadMessageSenders = await Message.distinct('sender', {
         recipient: req.user._id,
         isRead: false
     });
-    const unreadMessages = unreadMessageSenders.length;
+    const unreadMessages = unreadMessageSenders.length || 0;
 
-    const pendingConnections = await Connection.countDocuments({
+    // pendingConnections must be where recipient is current user and status is pending AND isSeen is false
+    const pendingConnectionsCount = await Connection.countDocuments({
         recipient: req.user._id,
-        status: 'pending'
+        status: 'pending',
+        isSeen: false
     });
 
     const unreadNotifications = await Notification.countDocuments({
         recipient: req.user._id,
         isRead: false
+    }) || 0;
+
+    // Feed dot logic: Are there any new posts since user last visit the feed?
+    const lastFeedVisit = req.user.lastFeedVisit || new Date(0);
+    const hasNewPosts = await Post.exists({
+        user: { $ne: req.user._id },
+        createdAt: { $gt: lastFeedVisit }
     });
 
     res.json({
         messages: unreadMessages,
-        connections: pendingConnections,
-        notifications: unreadNotifications
+        connections: pendingConnectionsCount,
+        notifications: unreadNotifications,
+        hasNewPosts: !!hasNewPosts
     });
 });
 

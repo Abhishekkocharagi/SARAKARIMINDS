@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/context/LanguageContext';
+import { useRouter, usePathname } from 'next/navigation';
 import debounce from 'lodash.debounce';
 
 interface SearchUser {
@@ -15,8 +16,22 @@ interface SearchUser {
 }
 
 export default function Navbar() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
+    const { language, setLanguage, t } = useLanguage();
     const router = useRouter();
+    const pathname = usePathname();
+
+    const isActive = (path: string) => {
+        if (path === '/feed') return pathname === '/feed' || pathname === '/';
+        return pathname?.startsWith(path);
+    };
+
+    const getLinkStyles = (path: string) => `
+        relative h-full flex items-center px-1 border-b-2 transition-all duration-200
+        ${isActive(path)
+            ? 'border-gray-900 text-gray-900 font-bold'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 font-medium'}
+    `;
 
     // Search States
     const [searchQuery, setSearchQuery] = useState('');
@@ -55,10 +70,51 @@ export default function Navbar() {
             });
             const data = await res.json();
             if (data) {
-                setUnreadNotifications(data.notifications || 0);
-                setUnreadMessages(data.messages || 0);
-                setPendingConnections(data.connections || 0);
+                setUnreadNotifications(Number(data.notifications) || 0);
+                setUnreadMessages(Number(data.messages) || 0);
+                setPendingConnections(Number(data.connections) || 0);
+                setHasNewPosts(!!data.hasNewPosts);
             }
+        } catch (err) { console.error(err); }
+    };
+
+    const markNetworkSeen = async () => {
+        setPendingConnections(0);
+        try {
+            await fetch('http://localhost:5000/api/connections/mark-seen', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+        } catch (err) { console.error(err); }
+    };
+
+    const markMessagesRead = async () => {
+        setUnreadMessages(0);
+        try {
+            await fetch('http://localhost:5000/api/messages/read-all', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+        } catch (err) { console.error(err); }
+    };
+
+    const markNotificationsRead = async () => {
+        setUnreadNotifications(0);
+        try {
+            await fetch('http://localhost:5000/api/notifications/read', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
+        } catch (err) { console.error(err); }
+    };
+
+    const clearFeedDot = async () => {
+        setHasNewPosts(false);
+        try {
+            await fetch('http://localhost:5000/api/posts/last-visit', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${user?.token}` }
+            });
         } catch (err) { console.error(err); }
     };
 
@@ -157,17 +213,19 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-white border-b px-6 py-2 shadow-sm">
-            <div className="max-w-7xl mx-auto flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                    <Link href="/feed" className="text-2xl font-bold text-blue-800 flex-shrink-0">SarkariMinds</Link>
+        <nav className="sticky top-0 z-50 bg-white border-b px-6 h-16 shadow-sm">
+            <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
+                <Link href="/feed" className="flex-shrink-0 mr-8">
+                    <img src="/logo_full.png" alt="SarkariMinds" className="h-6 md:h-8 w-auto object-contain" />
+                </Link>
 
+                <div className="flex items-center space-x-8">
                     {/* Global Search Bar */}
-                    <div className="relative hidden md:block w-72" ref={searchRef}>
+                    <div className="relative hidden md:block w-80" ref={searchRef}>
                         <form onSubmit={handleSearchSubmit}>
                             <input
                                 type="text"
-                                placeholder="Search..."
+                                placeholder={t('nav.search')}
                                 value={searchQuery}
                                 onFocus={() => setShowSearchDropdown(true)}
                                 onChange={handleSearchChange}
@@ -182,10 +240,10 @@ export default function Navbar() {
                                 {searchQuery.trim() ? (
                                     <>
                                         <div className="p-3 bg-gray-50 border-b flex justify-between items-center text-xs font-black uppercase tracking-widest text-gray-500">
-                                            Search Results
+                                            {t('nav.search_results')}
                                         </div>
                                         {isSearching ? (
-                                            <div className="p-4 text-center text-gray-400 text-xs">Searching...</div>
+                                            <div className="p-4 text-center text-gray-400 text-xs">{t('nav.searching')}</div>
                                         ) : searchResults.length > 0 ? (
                                             <>
                                                 {searchResults.map(user => (
@@ -207,19 +265,19 @@ export default function Navbar() {
                                                     onClick={handleSearchSubmit}
                                                     className="block p-3 text-center text-xs font-bold text-blue-700 bg-gray-50 hover:bg-gray-100 border-t cursor-pointer transition uppercase tracking-widest"
                                                 >
-                                                    See all results
+                                                    {t('nav.see_all')}
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="p-8 text-center text-sm text-gray-500 italic">No results found</div>
+                                            <div className="p-8 text-center text-sm text-gray-500 italic">{t('nav.no_results')}</div>
                                         )}
                                     </>
                                 ) : (
                                     <>
                                         <div className="p-3 bg-gray-50 border-b flex justify-between items-center">
-                                            <span className="text-xs font-black uppercase tracking-widest text-gray-500">Recent Searches</span>
+                                            <span className="text-xs font-black uppercase tracking-widest text-gray-500">{t('nav.recent_searches')}</span>
                                             {recentSearches.length > 0 && (
-                                                <button onClick={clearRecent} className="text-[10px] hover:text-red-500 text-gray-400 font-bold uppercase tracking-wider">Clear</button>
+                                                <button onClick={clearRecent} className="text-[10px] hover:text-red-500 text-gray-400 font-bold uppercase tracking-wider">{t('nav.clear')}</button>
                                             )}
                                         </div>
                                         {recentSearches.length > 0 ? (
@@ -240,7 +298,7 @@ export default function Navbar() {
                                             ))
                                         ) : (
                                             <div className="p-8 text-center text-xs text-gray-400">
-                                                No recent searches
+                                                {t('nav.no_recent')}
                                             </div>
                                         )}
                                     </>
@@ -249,48 +307,48 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    <div className="hidden lg:flex space-x-6">
+                    <div className="hidden lg:flex space-x-8 xl:space-x-12 h-full">
                         {/* Home - Shows dot if new posts */}
-                        <Link href="/feed" className="relative text-gray-600 hover:text-blue-800 font-medium transition-colors">
-                            Home
+                        <Link href="/feed" onClick={clearFeedDot} className={getLinkStyles('/feed')}>
+                            {t('nav.home')}
                             {hasNewPosts && (
-                                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span className="absolute top-4 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                             )}
                         </Link>
 
                         {/* My Network */}
-                        <Link href="/network" className="relative text-gray-600 hover:text-blue-800 font-medium transition-colors">
-                            My Network
+                        <Link href="/network" onClick={markNetworkSeen} className={getLinkStyles('/network')}>
+                            {t('nav.network')}
                             {pendingConnections > 0 && (
-                                <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                                <span className="absolute top-3 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                                     {pendingConnections > 99 ? '99+' : pendingConnections}
                                 </span>
                             )}
                         </Link>
 
                         {/* Messages - Shows count */}
-                        <Link href="/messages" className="relative text-gray-600 hover:text-blue-800 font-medium transition-colors">
-                            Messages
+                        <Link href="/messages" onClick={markMessagesRead} className={getLinkStyles('/messages')}>
+                            {t('nav.messages')}
                             {unreadMessages > 0 && (
-                                <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                                <span className="absolute top-3 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                                     {unreadMessages > 99 ? '99+' : unreadMessages}
                                 </span>
                             )}
                         </Link>
 
                         {/* Notifications - Shows count */}
-                        <Link href="/notifications" className="relative text-gray-600 hover:text-blue-800 font-medium transition-colors">
-                            Notifications
+                        <Link href="/notifications" onClick={markNotificationsRead} className={getLinkStyles('/notifications')}>
+                            {t('nav.notifications')}
                             {unreadNotifications > 0 && (
-                                <span className="absolute -top-2 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                                <span className="absolute top-3 -right-3 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                                     {unreadNotifications > 99 ? '99+' : unreadNotifications}
                                 </span>
                             )}
                         </Link>
 
                         {/* My Profile */}
-                        <Link href={`/profile/${user?._id}`} className="text-gray-600 hover:text-blue-800 font-medium transition-colors">
-                            My Profile
+                        <Link href={`/profile/${user?._id}`} className={getLinkStyles(`/profile/${user?._id}`)}>
+                            {t('nav.profile')}
                         </Link>
                     </div>
                 </div>
@@ -300,19 +358,7 @@ export default function Navbar() {
                         ⚙️
                     </Link>
 
-                    <div className="hidden sm:flex items-center space-x-3 border-l pl-6">
-                        <div className="text-right">
-                            <p className="text-xs font-bold text-gray-900">{user?.name || 'Aspirant'}</p>
-                            <button onClick={logout} className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Logout</button>
-                        </div>
-                        <Link href={`/profile/${user?._id}`} className="w-10 h-10 bg-blue-800 rounded-lg flex items-center justify-center text-white font-bold border-2 border-blue-200 uppercase overflow-hidden hover:scale-110 transition-transform">
-                            {user?.profilePic ? (
-                                <img src={user.profilePic} className="w-full h-full object-cover" />
-                            ) : (
-                                <span>{user?.name ? user.name.charAt(0) : '?'}</span>
-                            )}
-                        </Link>
-                    </div>
+
                 </div>
             </div>
         </nav>

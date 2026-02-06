@@ -1,0 +1,1 @@
+﻿src/components/PostCard.tsx(164,91): error TS2345: Argument of type '"post.doc_hint"' is not assignable to parameter of type '"nav.discover" | "nav.network_short" | "nav.feed" | "nav.home" | "nav.network" | "nav.messages" | "nav.notifications" | "nav.profile" | "nav.logout" | "nav.search" | "nav.signin" | ... 384 more ... | "nav.contact"'.

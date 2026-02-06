@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) {
     const [content, setContent] = useState('');
@@ -10,6 +11,7 @@ export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) 
     const [loading, setLoading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { user } = useAuth();
+    const { t } = useLanguage();
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -72,11 +74,11 @@ export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) 
     return (
         <div className="bg-white border rounded-2xl p-5 mb-6 shadow-sm border-gray-100">
             <div className="flex space-x-4">
-                <div className="w-12 h-12 bg-blue-800 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black text-xl shadow-inner uppercase">
+                <div className="w-10 h-10 bg-blue-800 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black text-lg shadow-inner uppercase">
                     {user?.name.charAt(0)}
                 </div>
                 <textarea
-                    placeholder="What's your strategy for the upcoming exam?"
+                    placeholder={t('post.box_placeholder')}
                     className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-100 resize-none h-28 font-medium text-gray-700 transition-all"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
@@ -113,7 +115,7 @@ export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) 
                         className="flex items-center space-x-2 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all group"
                     >
                         <span className="text-xl group-hover:scale-110 transition-transform">🖼️</span>
-                        <span className="text-xs font-black text-gray-500 uppercase tracking-tighter">Media</span>
+                        <span className="text-xs font-black text-gray-500 uppercase tracking-tighter">{t('post.media')}</span>
                     </button>
                     <input
                         type="file"
@@ -134,7 +136,7 @@ export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) 
                             <span>Posting...</span>
                         </>
                     ) : (
-                        <span>Post Now</span>
+                        <span>{t('post.button')}</span>
                     )}
                 </button>
             </div>

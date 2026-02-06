@@ -5,9 +5,11 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/context/LanguageContext';
 
 export default function DailyNewspaperPage() {
     const { user, loading: authLoading } = useAuth();
+    const { t } = useLanguage();
     const router = useRouter();
     const [newspapers, setNewspapers] = useState<any[]>([]);
     const [selectedNewspaper, setSelectedNewspaper] = useState<any>(null);
@@ -63,7 +65,7 @@ export default function DailyNewspaperPage() {
     };
 
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('en-IN', {
+        return new Date(dateString).toLocaleDateString(t('sidebar.language') === 'kn' ? 'kn-IN' : 'en-IN', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
@@ -85,37 +87,37 @@ export default function DailyNewspaperPage() {
         return new Date(b).getTime() - new Date(a).getTime();
     });
 
-    if (authLoading || !user) return <div className="p-10 text-center">Loading...</div>;
+    if (authLoading || !user) return <div className="p-10 text-center">{t('common.loading')}</div>;
 
     return (
         <div className="min-h-screen bg-[#F3F2EF] overflow-x-hidden">
             <Navbar />
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 h-[calc(100vh-80px)] overflow-hidden">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-full relative">
+            <main className="max-w-7xl mx-auto px-6 pt-6 pb-10 min-h-screen">
+                <div className="flex flex-col md:flex-row gap-6 items-start relative">
                     {/* Left Sidebar - Always visible on desktop */}
-                    <div className="md:col-span-3 hidden md:block h-full">
+                    <div className="hidden md:block w-[280px] shrink-0">
                         <Sidebar />
                     </div>
 
                     {/* Content Area with Sliding panels */}
-                    <div className="md:col-span-9 h-full relative overflow-hidden bg-white border rounded-[2.5rem] shadow-sm">
+                    <div className="flex-1 min-w-0 relative overflow-hidden bg-white border rounded-[2.5rem] shadow-sm flex min-h-[800px]">
 
                         {/* Slide 1: Archive List */}
-                        <div className={`absolute inset-0 p-4 md:p-8 transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? '-translate-x-full opacity-0' : 'translate-x-0 opacity-100'
+                        <div className={`w-full shrink-0 p-4 md:p-8 transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? '-translate-x-full opacity-0' : 'translate-x-0 opacity-100'
                             }`}>
                             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 shrink-0">
                                 <div>
                                     <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-3">
                                         <span className="text-4xl">📰</span>
-                                        Daily Archive
+                                        {t('news.archive_title')}
                                     </h1>
                                     <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mt-1">
-                                        Admin uploaded newspapers
+                                        {t('news.admin_hint')}
                                     </p>
                                 </div>
                                 <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
                                     <span className="text-blue-700 font-black text-xs uppercase tracking-widest">
-                                        {newspapers.length} Papers
+                                        {newspapers.length} {t('news.papers_count')}
                                     </span>
                                 </div>
                             </header>
@@ -124,11 +126,11 @@ export default function DailyNewspaperPage() {
                                 {loading ? (
                                     <div className="py-20 flex flex-col items-center justify-center space-y-4">
                                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
-                                        <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">Fetching papers...</p>
+                                        <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">{t('news.fetching')}</p>
                                     </div>
                                 ) : newspapers.length === 0 ? (
                                     <div className="py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed">
-                                        <h2 className="text-xl font-bold text-gray-600">No newspapers found</h2>
+                                        <h2 className="text-xl font-bold text-gray-600">{t('news.not_found')}</h2>
                                     </div>
                                 ) : (
                                     <div className="space-y-10">
@@ -163,7 +165,7 @@ export default function DailyNewspaperPage() {
                                                             </div>
                                                             <div className="flex items-center gap-4">
                                                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-tight">
-                                                                    {newspaper.views?.length || 0} Readers
+                                                                    {newspaper.views?.length || 0} {t('news.readers_stat')}
                                                                 </span>
                                                                 <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-all transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
@@ -180,7 +182,7 @@ export default function DailyNewspaperPage() {
                         </div>
 
                         {/* Slide 2: Viewer Panel */}
-                        <div className={`absolute inset-0 bg-white transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0 shadow-2xl'
+                        <div className={`w-full shrink-0 bg-white transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? '-translate-x-full opacity-100' : 'translate-x-0 opacity-0 shadow-2xl'
                             }`}>
                             {selectedNewspaper && (
                                 <>
@@ -193,7 +195,7 @@ export default function DailyNewspaperPage() {
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
                                                 </svg>
-                                                Back to Archive
+                                                {t('news.back_to_archive')}
                                             </button>
                                             <h2 className="text-xl font-black text-gray-900 leading-tight uppercase tracking-tight line-clamp-1">
                                                 {selectedNewspaper.name}
@@ -234,14 +236,14 @@ export default function DailyNewspaperPage() {
 
                                     <div className="px-6 py-4 border-t bg-white flex justify-between items-center shrink-0">
                                         <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em]">
-                                            SarkariMinds Digital Preview
+                                            {t('news.digital_preview')}
                                         </p>
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => setIsFullScreen(true)}
                                                 className="px-6 py-2 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
                                             >
-                                                <span className="text-lg">⛶</span> Full Screen
+                                                <span className="text-lg">⛶</span> {t('news.full_screen')}
                                             </button>
                                             <a
                                                 href={selectedNewspaper.fileUrl}
@@ -249,7 +251,7 @@ export default function DailyNewspaperPage() {
                                                 rel="noopener noreferrer"
                                                 className="px-6 py-2 bg-gray-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all"
                                             >
-                                                Open Original
+                                                {t('news.open_original')}
                                             </a>
                                         </div>
                                     </div>
@@ -271,7 +273,7 @@ export default function DailyNewspaperPage() {
                                     {selectedNewspaper.name}
                                 </h2>
                                 <p className="text-[10px] text-blue-600 font-bold uppercase tracking-[0.2em]">
-                                    Direct Reading Mode
+                                    {t('news.reading_mode')}
                                 </p>
                             </div>
                         </div>
@@ -282,7 +284,7 @@ export default function DailyNewspaperPage() {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
                             </svg>
-                            Go Back
+                            {t('news.go_back')}
                         </button>
                     </div>
                     <div className="flex-1 bg-gray-100 overflow-hidden">

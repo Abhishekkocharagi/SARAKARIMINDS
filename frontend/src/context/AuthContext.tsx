@@ -14,12 +14,23 @@ interface User {
     coverPic?: string;
     about?: string;
     exams?: string[];
+    preferredExams?: any[];
+    receiveAllNotifications?: boolean;
     connectionsCount?: number;
     followersCount?: number;
     followingCount?: number;
     mentorApplicationStatus?: string;
     academyApplicationStatus?: string;
     examHashtags?: string[];
+    language?: string;
+    isVerified?: boolean;
+    mentorshipEnabled?: boolean;
+    mentorshipPrice?: number;
+    savedPosts?: string[];
+    dailyQuizStreakCount?: number;
+    lastDailyQuizAttemptDate?: string;
+    dailyGameStreakCount?: number;
+    lastDailyGameAttemptDate?: string;
 }
 
 interface AuthContextType {
