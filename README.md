@@ -56,9 +56,6 @@ It brings **daily exam-relevant news**, **government exam updates**, and **aspir
 - Git & GitHub
 - Cloud Hosting (Vercel / AWS / Render)
 
----
-
-## 📂 Project Structure
 
 
 ---
