@@ -1,18 +1,65 @@
-# SarkariMinds 🎯
-**Professional Networking for Karnataka Government Exam Aspirants**
+# 📘 SarkariMinds
 
-## Features
-- **User Authentication**: Secure JWT-based login/register.
-- **Account Types**: Specialized UI for Aspirants, Mentors, and Academies.
-- **Exam Tags**: Focus on KPSC (KAS, FDA, SDA), PSI, PDO, and more.
-- **Networking**: Connect with fellow candidates in Karnataka.
-- **Stories**: Share quick updates that last 24 hours.
+**SarkariMinds** is a student-focused digital platform built for competitive exam aspirants.  
+It brings **daily exam-relevant news**, **government exam updates**, and **aspirant networking** into a single, easy-to-use platform.
 
-## Tech Stack
-- **Frontend**: Next.js 15, Tailwind CSS, TypeScript.
-- **Backend**: Node.js, Express.
-- **Database**: MongoDB.
-- **Auth**: JWT & Bcrypt.
+---
+
+## 🚀 Features
+
+- 📰 **Daily Newspaper Digest**
+  - Curated and exam-oriented news
+  - Admin approval before publishing
+  - Copyright-safe summaries (no redirection)
+
+- 📢 **Exam & Notification Updates**
+  - UPSC, SSC, Banking, State PSC, Railway & more
+  - Notifications, admit cards, results, syllabus
+
+- 🤝 **Connect With Aspirants**
+  - LinkedIn-style networking for students
+  - Connect with toppers & working professionals
+  - Community posts, discussions & doubt solving
+
+- 🔍 **Smart Search**
+  - Search exams, news, posts, and people
+
+- 📚 **Study Resources**
+  - PDFs, notes, links, and shared materials
+
+- 💡 **Planned Features**
+  - AI-based news summarization
+  - Personalized exam feed
+  - Recommendation engine
+
+---
+
+## 🛠️ Tech Stack
+
+### Frontend
+- Next.js
+- React
+- Tailwind CSS
+- TypeScript (optional)
+
+### Backend
+- Node.js
+- Express / Next.js API Routes
+
+### Database
+- MongoDB / PostgreSQL
+
+### Authentication
+- JWT / OAuth (Google Login – optional)
+
+### Tools
+- Git & GitHub
+- Cloud Hosting (Vercel / AWS / Render)
+
+---
+
+## 📂 Project Structure
+
 
 ---
 
