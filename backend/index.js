@@ -1,4 +1,5 @@
 const express = require('express');
+const compression = require('compression');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const connectDB = require('./src/config/db');
@@ -12,9 +13,21 @@ const startServer = async () => {
         await connectDB();
 
         const app = express();
+        app.use(compression());
+        const http = require('http');
+        const server = http.createServer(app);
+
+        // Initialize Sockets
+        const { initSocket } = require('./src/socket');
+        initSocket(server);
 
         // Middleware
-        app.use(cors());
+        app.use(cors({
+            origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:3001', 'http://127.0.0.1:3001'],
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization']
+        }));
         app.use(express.json());
 
         // Serve Static Files with PDF headers
@@ -59,6 +72,7 @@ const startServer = async () => {
         app.use('/api/admin/jilebi', require('./src/routes/jilebiRoutes')); // JILEBI ADMIN (mounted at root)
         app.use('/api/word-path', require('./src/routes/wordPathRoutes')); // WORD PATH CHALLENGE
         app.use('/api/current-affairs', require('./src/routes/currentAffairRoutes')); // CURRENT AFFAIRS
+        app.use('/api/topic-of-the-day', require('./src/routes/topicOfTheDayRoutes')); // TOPIC OF THE DAY
 
         app.get('/', (req, res) => {
             res.send('SarkariMinds API is running...');
@@ -74,6 +88,9 @@ const startServer = async () => {
         // Error handling middleware
         app.use((err, req, res, next) => {
             const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+            console.error(`[Error] ${req.method} ${req.originalUrl}: ${err.message}`);
+            if (err.stack) console.error(err.stack);
+
             res.status(statusCode);
             res.json({
                 message: err.message,
@@ -83,7 +100,7 @@ const startServer = async () => {
 
         const PORT = process.env.PORT || 5000;
 
-        app.listen(PORT, () => {
+        server.listen(PORT, () => {
             console.log(`Server running on port ${PORT}`);
         });
     } catch (error) {

@@ -10,6 +10,7 @@ import {
     Users, TrendingUp, Bell, MessageSquare, Briefcase,
     Filter, RefreshCw, ChevronRight, MapPin, Activity
 } from 'lucide-react';
+import { API_BASE_URL } from '@/config';
 
 interface DashboardData {
     mau: {
@@ -58,7 +59,7 @@ export default function SalesDashboard() {
                 ...(selectedExam && { examId: selectedExam })
             });
 
-            const res = await fetch(`http://localhost:5000/api/analytics/sales-dashboard?${queryParams}`, {
+            const res = await fetch(`${API_BASE_URL}/api/analytics/sales-dashboard?${queryParams}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
@@ -76,7 +77,7 @@ export default function SalesDashboard() {
 
     const fetchExams = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {

@@ -94,9 +94,8 @@ exports.getTodayJilebiPuzzles = async (req, res) => {
         const today = new Date().toISOString().split('T')[0];
         const puzzles = await JilebiPuzzle.find({ activeDate: today, isActive: true });
 
-        if (puzzles.length === 0) {
-            return res.status(404).json({ message: 'ಇಂದಿನ ಜಲೇಬಿ ಪಜಲ್ಸ್ ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ!' });
-        }
+        // return res.status(404).json({ message: 'ಇಂದಿನ ಜಲೇಬಿ ಪಜಲ್ಸ್ ಶೀಘ್ರದಲ್ಲೇ ಬರಲಿದೆ!' });
+        return res.json([]);
 
         // Check attempts for each puzzle
         const puzzleWithStatus = await Promise.all(puzzles.map(async (p) => {

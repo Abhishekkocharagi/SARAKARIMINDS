@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { FiX } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 import MentionDropdown from './MentionDropdown';
 
 interface SearchUser {
@@ -35,7 +36,7 @@ export default function PostModal({ isOpen, onClose, refreshPosts }: { isOpen: b
         if (mentionSearch.length >= 2) {
             const fetchUsers = async () => {
                 try {
-                    const res = await fetch(`http://localhost:5000/api/users/search?q=${mentionSearch}`, {
+                    const res = await fetch(`${API_BASE_URL}/api/users/search?q=${mentionSearch}`, {
                         headers: { 'Authorization': `Bearer ${user?.token}` }
                     });
                     const data = await res.json();
@@ -105,22 +106,18 @@ export default function PostModal({ isOpen, onClose, refreshPosts }: { isOpen: b
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                alert('File is too large! Maximum size is 10MB.');
+            if (file.size > 50 * 1024 * 1024) { // 50MB limit
+                alert('File is too large! Maximum size is 50MB.');
                 return;
             }
             setMedia(file);
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onloadend = () => setMediaPreview(reader.result as string);
-                reader.readAsDataURL(file);
-            } else {
-                setMediaPreview(null);
-            }
+            const url = URL.createObjectURL(file);
+            setMediaPreview(url);
         }
     };
 
     const removeMedia = () => {
+        if (mediaPreview) URL.revokeObjectURL(mediaPreview);
         setMedia(null);
         setMediaPreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -138,7 +135,7 @@ export default function PostModal({ isOpen, onClose, refreshPosts }: { isOpen: b
                 formData.append('media', media);
             }
 
-            const res = await fetch('http://localhost:5000/api/posts', {
+            const res = await fetch(`${API_BASE_URL}/api/posts`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user?.token}`
@@ -165,36 +162,41 @@ export default function PostModal({ isOpen, onClose, refreshPosts }: { isOpen: b
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col border border-white/20">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                    <h2 className="text-2xl font-black text-gray-900">Create Post</h2>
+                <div className="flex items-center justify-between p-6 border-b border-gray-100/50">
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create Post</h2>
+                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-[0.2em] mt-0.5">Share your insights</p>
+                    </div>
                     <button
                         onClick={onClose}
-                        className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                        className="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-all hover:rotate-90 text-gray-400 hover:text-gray-900"
                     >
-                        <FiX size={24} className="text-gray-600" />
+                        <FiX size={24} />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
-                    <div className="flex space-x-4 mb-4">
-                        <div className="w-10 h-10 bg-blue-800 rounded-xl flex-shrink-0 flex items-center justify-center text-white font-black text-lg shadow-inner uppercase">
-                            {user?.name.charAt(0)}
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    <div className="flex space-x-4">
+                        <div className="flex-shrink-0">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-700 to-indigo-900 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg uppercase transform hover:scale-105 transition-transform">
+                                {user?.name.charAt(0)}
+                            </div>
                         </div>
                         <div className="relative w-full">
                             <textarea
                                 ref={textareaRef}
                                 placeholder={t('post.box_placeholder')}
-                                className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-100 resize-none h-32 font-medium text-gray-700 transition-all"
+                                className="w-full bg-transparent border-none rounded-2xl px-0 py-2 focus:ring-0 resize-none h-40 font-medium text-gray-800 text-lg placeholder-gray-300 transition-all leading-relaxed"
                                 value={content}
                                 onChange={handleTextChange}
                                 onKeyDown={handleKeyDown}
                             />
                             {showMentions && (
-                                <div className="absolute top-full left-0 mt-1">
+                                <div className="absolute top-full left-0 z-10 w-full">
                                     <MentionDropdown
                                         users={matchingUsers}
                                         onSelect={handleSelectUser}
@@ -205,60 +207,88 @@ export default function PostModal({ isOpen, onClose, refreshPosts }: { isOpen: b
                         </div>
                     </div>
 
-                    {/* Media Preview */}
+                    {/* Media Preview Area */}
                     {media && (
-                        <div className="mt-4 relative group">
-                            <div className="bg-gray-50 rounded-2xl p-4 border-2 border-dashed border-gray-200">
-                                {mediaPreview ? (
-                                    <img src={mediaPreview} alt="Preview" className="max-h-64 rounded-xl mx-auto object-contain" />
+                        <div className="relative group animate-in slide-in-from-bottom-4 duration-500">
+                            <div className="rounded-3xl overflow-hidden border border-gray-100 shadow-2xl bg-gray-50 relative">
+                                {media.type.startsWith('image/') ? (
+                                    <img src={mediaPreview!} alt="Preview" className="w-full h-auto max-h-[400px] object-cover" />
+                                ) : media.type.startsWith('video/') ? (
+                                    <video src={mediaPreview!} controls className="w-full h-auto max-h-[400px] bg-black" />
                                 ) : (
-                                    <div className="flex items-center space-x-3 text-blue-700 font-bold p-2">
-                                        <span className="text-2xl">📄</span>
-                                        <span className="text-sm truncate">{media.name}</span>
-                                        <span className="text-[10px] bg-blue-100 px-2 py-1 rounded-full">PDF</span>
+                                    <div className="p-8 flex flex-col items-center justify-center space-y-4 bg-gradient-to-br from-blue-50 to-white">
+                                        <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-4xl transform -rotate-6">
+                                            📄
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-black text-gray-900 truncate max-w-xs">{media.name}</p>
+                                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1">PDF DOCUMENT</p>
+                                        </div>
                                     </div>
                                 )}
                                 <button
                                     onClick={removeMedia}
-                                    className="absolute top-2 right-2 bg-black/70 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-black transition-all"
+                                    className="absolute top-4 right-4 bg-white/90 backdrop-blur shadow-xl text-gray-900 w-10 h-10 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 active:scale-90"
                                 >
-                                    ✕
+                                    <FiX size={20} />
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="flex justify-between items-center p-6 border-t border-gray-100">
-                    <div className="flex space-x-2">
+                {/* Footer Tools */}
+                <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center space-x-2">
                         <button
                             onClick={() => fileInputRef.current?.click()}
-                            className="flex items-center space-x-2 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all group"
+                            className="flex items-center space-x-3 bg-white hover:bg-blue-50 px-5 py-3 rounded-2xl border border-gray-200 shadow-sm transition-all group active:scale-95"
                         >
-                            <span className="text-xl group-hover:scale-110 transition-transform">🖼️</span>
-                            <span className="text-xs font-black text-gray-500 uppercase tracking-tighter">{t('post.media')}</span>
+                            <span className="text-2xl group-hover:rotate-12 transition-transform">🌅</span>
+                            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.1em]">{t('post.media')}</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (fileInputRef.current) {
+                                    fileInputRef.current.setAttribute('accept', 'video/*');
+                                    fileInputRef.current.click();
+                                }
+                            }}
+                            className="flex items-center space-x-3 bg-white hover:bg-blue-50 px-5 py-3 rounded-2xl border border-gray-200 shadow-sm transition-all group active:scale-95"
+                        >
+                            <span className="text-2xl group-hover:rotate-12 transition-transform">🎥</span>
+                            <span className="text-[10px] font-black text-gray-600 uppercase tracking-[0.1em]">Video</span>
                         </button>
                         <input
                             type="file"
                             hidden
                             ref={fileInputRef}
-                            onChange={handleFileChange}
-                            accept="image/*,application/pdf"
+                            onChange={(e) => {
+                                handleFileChange(e);
+                                // Reset to default accept
+                                e.target.setAttribute('accept', 'image/*,video/*,application/pdf');
+                            }}
+                            accept="image/*,video/*,application/pdf"
                         />
                     </div>
+
                     <button
                         onClick={handleSubmit}
                         disabled={loading || (!content.trim() && !media)}
-                        className="bg-blue-700 text-white px-8 py-2.5 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95 disabled:opacity-20 flex items-center space-x-2"
+                        className="w-full sm:w-auto bg-gradient-to-r from-blue-700 to-indigo-800 text-white px-10 py-4 rounded-[1.5rem] font-black text-xs uppercase tracking-[0.2em] hover:shadow-2xl hover:shadow-blue-200 transition-all shadow-xl active:scale-95 disabled:opacity-30 flex items-center justify-center space-x-3"
                     >
                         {loading ? (
                             <>
-                                <span className="animate-spin text-lg">⏳</span>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                 <span>Posting...</span>
                             </>
                         ) : (
-                            <span>{t('post.button')}</span>
+                            <>
+                                <span>{t('post.button')}</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                                </svg>
+                            </>
                         )}
                     </button>
                 </div>

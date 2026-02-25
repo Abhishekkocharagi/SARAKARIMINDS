@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface JobUpdate {
     _id: string;
@@ -36,7 +37,7 @@ export default function AdminJobUpdatesPage() {
 
     const fetchJobs = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/job-updates', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/job-updates`, {
                 headers: {
                     'Authorization': `Bearer ${user?.token}`
                 }
@@ -93,8 +94,8 @@ export default function AdminJobUpdatesPage() {
         setLoading(true);
 
         const url = editingJobId
-            ? `http://localhost:5000/api/admin/job-updates/${editingJobId}`
-            : 'http://localhost:5000/api/admin/job-updates';
+            ? `${API_BASE_URL}/api/admin/job-updates/${editingJobId}`
+            : `${API_BASE_URL}/api/admin/job-updates`;
 
         const method = editingJobId ? 'PUT' : 'POST';
 
@@ -136,7 +137,7 @@ export default function AdminJobUpdatesPage() {
     const handleDelete = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this job?')) {
             try {
-                const res = await fetch(`http://localhost:5000/api/admin/job-updates/${id}`, {
+                const res = await fetch(`${API_BASE_URL}/api/admin/job-updates/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${user?.token}`

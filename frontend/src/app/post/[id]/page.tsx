@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import PostCard from '@/components/PostCard';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 export default function SinglePostPage() {
     const { id } = useParams();
@@ -29,7 +30,7 @@ export default function SinglePostPage() {
 
     const fetchPost = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/posts/${id}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {

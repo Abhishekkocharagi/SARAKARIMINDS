@@ -12,7 +12,7 @@ const examDocumentSchema = mongoose.Schema({
     },
     category: {
         type: String,
-        enum: ['Notification', 'Syllabus', 'Cut-off', 'Result', 'Previous Paper', 'Other'],
+        enum: ['Notification', 'Syllabus', 'Cut-off', 'Result', 'Previous Paper', 'Model Paper', 'Other'],
         required: true
     },
     fileUrl: {

@@ -6,19 +6,43 @@ const currentAffairSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    description: {
-        type: String,
+    shortSummary: {
+        type: String, // 3-5 bullet points
         required: true
     },
-    category: {
+    fullSummary: {
+        type: String, // Rich text
+        required: true
+    },
+    source: {
+        type: String,
+        default: ''
+    },
+    primaryCategory: {
         type: String,
         required: true,
-        enum: ['National', 'Karnataka', 'International', 'Economy', 'Science & Tech', 'Polity', 'Sports', 'Awards', 'Appointments', 'Other'],
-        default: 'National'
+        enum: ['Polity', 'Economy', 'Science & Technology', 'Environment', 'International Relations', 'Government Schemes', 'Karnataka State Affairs', 'Miscellaneous', 'National', 'Sports', 'Awards', 'Appointments', 'Other'],
+        default: 'Miscellaneous'
     },
-    relatedExams: [{
-        type: String
-    }],
+    secondaryCategory: {
+        type: String,
+        enum: ['Polity', 'Economy', 'Science & Technology', 'Environment', 'International Relations', 'Government Schemes', 'Karnataka State Affairs', 'Miscellaneous', 'National', 'Sports', 'Awards', 'Appointments', 'Other'],
+    },
+    examRelevance: {
+        type: String,
+        enum: ['Prelims', 'Mains', 'Both'],
+        default: 'Both'
+    },
+    difficulty: {
+        type: String,
+        enum: ['Easy', 'Moderate', 'Advanced'],
+        default: 'Moderate'
+    },
+    status: {
+        type: String,
+        enum: ['Draft', 'Publish'],
+        default: 'Draft'
+    },
     date: {
         type: Date,
         default: Date.now
@@ -49,7 +73,7 @@ const currentAffairSchema = new mongoose.Schema({
 });
 
 // Index for efficient filtering
-currentAffairSchema.index({ date: -1, category: 1 });
+currentAffairSchema.index({ date: -1, primaryCategory: 1, status: 1 });
 
 const CurrentAffair = mongoose.model('CurrentAffair', currentAffairSchema);
 

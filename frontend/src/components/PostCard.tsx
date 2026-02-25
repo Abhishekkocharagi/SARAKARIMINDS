@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 interface Post {
     _id: string;
@@ -22,7 +23,7 @@ interface Post {
         type: 'like' | 'celebrate' | 'support' | 'love' | 'insightful' | 'funny';
     }[];
     mediaUrl?: string;
-    mediaType?: 'image' | 'pdf';
+    mediaType?: 'image' | 'video' | 'pdf';
     comments: {
         _id: string;
         user: {
@@ -47,7 +48,18 @@ interface SearchUser {
     accountType?: string;
 }
 
-export default function PostCard({ post, onDelete, showDelete = false }: { post: Post, onDelete?: (postId: string) => void, showDelete?: boolean }) {
+const REACTION_TYPES_CONFIG = [
+    { id: 'like', icon: '👍', color: 'text-blue-600' },
+    { id: 'celebrate', icon: '👏', color: 'text-green-600' },
+    { id: 'support', icon: '❤️', color: 'text-red-500' },
+    { id: 'love', icon: '💖', color: 'text-pink-500' },
+    { id: 'insightful', icon: '💡', color: 'text-yellow-500' },
+    { id: 'funny', icon: '😆', color: 'text-orange-500' },
+];
+
+const EMOJIS = ['🚀', '📚', '🎯', '🔥', '👏', '✅', '💡', '✍️', '💯', '🙏', '💪', '🎓'];
+
+const PostCard = React.memo(({ post, onDelete, showDelete = false }: { post: Post, onDelete?: (postId: string) => void, showDelete?: boolean }) => {
     const { user } = useAuth();
     const { t } = useLanguage();
     const [reactions, setReactions] = useState(post.reactions || []);
@@ -63,23 +75,51 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
     const [selectedRecipients, setSelectedRecipients] = useState<SearchUser[]>([]);
     const [isSending, setIsSending] = useState(false);
     const reactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const repostVideoRef = useRef<HTMLVideoElement | null>(null);
 
     const [isSaved, setIsSaved] = useState(user?.savedPosts?.includes(post._id) || false);
 
-    const REACTION_TYPES = [
-        { id: 'like', label: t('reaction.like'), icon: '👍', color: 'text-blue-600' },
-        { id: 'celebrate', label: t('reaction.celebrate'), icon: '👏', color: 'text-green-600' },
-        { id: 'support', label: t('reaction.support'), icon: '❤️', color: 'text-red-500' },
-        { id: 'love', label: t('reaction.love'), icon: '💖', color: 'text-pink-500' },
-        { id: 'insightful', label: t('reaction.insightful'), icon: '💡', color: 'text-yellow-500' },
-        { id: 'funny', label: t('reaction.funny'), icon: '😆', color: 'text-orange-500' },
-    ];
+    const REACTION_TYPES = React.useMemo(() => [
+        { ...REACTION_TYPES_CONFIG[0], label: t('reaction.like') },
+        { ...REACTION_TYPES_CONFIG[1], label: t('reaction.celebrate') },
+        { ...REACTION_TYPES_CONFIG[2], label: t('reaction.support') },
+        { ...REACTION_TYPES_CONFIG[3], label: t('reaction.love') },
+        { ...REACTION_TYPES_CONFIG[4], label: t('reaction.insightful') },
+        { ...REACTION_TYPES_CONFIG[5], label: t('reaction.funny') },
+    ], [t]);
 
-    const EMOJIS = ['🚀', '📚', '🎯', '🔥', '👏', '✅', '💡', '✍️', '💯', '🙏', '💪', '🎓'];
+    React.useEffect(() => {
+        const handleVisibility = (entries: IntersectionObserverEntry[]) => {
+            entries.forEach(entry => {
+                if (entry.target instanceof HTMLVideoElement) {
+                    const video = entry.target;
+                    if (entry.isIntersecting) {
+                        // Attempting unmuted autoplay as requested
+                        video.play().catch(err => {
+                            console.debug('Unmuted autoplay blocked by browser policies. Retrying muted...', err);
+                            // Fallback to muted play if unmuted is blocked
+                            video.muted = true;
+                            video.play().catch((pErr: any) => console.debug('Muted autoplay also blocked:', pErr));
+                        });
+                    } else {
+                        video.pause();
+                    }
+                }
+            });
+        };
+
+        const observer = new IntersectionObserver(handleVisibility, { threshold: 0.5 });
+
+        if (videoRef.current) observer.observe(videoRef.current);
+        if (repostVideoRef.current) observer.observe(repostVideoRef.current);
+
+        return () => observer.disconnect();
+    }, [post.mediaType, post.isRepost]);
 
     const handleReaction = async (type: string) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${post._id}/like`, {
+            const res = await fetch(`${API_BASE_URL}/api/posts/${post._id}/like`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -95,15 +135,15 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
         } catch { console.error('Reaction error'); }
     };
 
-    const renderRichContent = (text: string, postMentions?: { _id: string, name: string }[]) => {
+    const richContent = React.useMemo(() => {
+        const text = post.content;
+        const postMentions = post.mentions;
         if (!text) return null;
-        // Split text by mentions (@name) but keep the delimiter
         const parts = text.split(/(@[\w\s.-]+)/g);
 
         return parts.map((part, i) => {
             if (part?.startsWith('@')) {
                 const nameInText = part.substring(1).trim();
-                // Find matching user in mentions array (case-insensitive and removing spaces for matching)
                 const mentionedUser = postMentions?.find(m =>
                     m.name.toLowerCase().replace(/\s+/g, '') === nameInText.toLowerCase().replace(/\s+/g, '') ||
                     m.name.toLowerCase() === nameInText.toLowerCase()
@@ -130,13 +170,50 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
             }
             return part;
         });
-    };
+    }, [post.content, post.mentions]);
+
+    const richOriginalContent = React.useMemo(() => {
+        const text = post.originalPost?.content;
+        const postMentions = post.originalPost?.mentions;
+        if (!text) return null;
+        const parts = text.split(/(@[\w\s.-]+)/g);
+
+        return parts.map((part, i) => {
+            if (part?.startsWith('@')) {
+                const nameInText = part.substring(1).trim();
+                const mentionedUser = postMentions?.find(m =>
+                    m.name.toLowerCase().replace(/\s+/g, '') === nameInText.toLowerCase().replace(/\s+/g, '') ||
+                    m.name.toLowerCase() === nameInText.toLowerCase()
+                );
+
+                if (mentionedUser) {
+                    return (
+                        <Link
+                            key={i}
+                            href={`/profile/${mentionedUser._id}`}
+                            className="text-blue-600 font-bold hover:underline cursor-pointer transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {part}
+                        </Link>
+                    );
+                }
+
+                return (
+                    <span key={i} className="text-blue-600 font-bold">
+                        {part}
+                    </span>
+                );
+            }
+            return part;
+        });
+    }, [post.originalPost?.content, post.originalPost?.mentions]);
 
     const handleComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!commentText.trim()) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${post._id}/comment`, {
+            const res = await fetch(`${API_BASE_URL}/api/posts/${post._id}/comment`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -156,7 +233,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
     const handleDeleteComment = async (commentId: string) => {
         if (!confirm(t('post.confirm_delete_comment') || 'Are you sure you want to delete this comment?')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/posts/${post._id}/comment/${commentId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/posts/${post._id}/comment/${commentId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -171,7 +248,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
 
     const fetchConnections = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/connections', {
+            const res = await fetch(`${API_BASE_URL}/api/connections`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -188,7 +265,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
             return;
         }
         try {
-            const res = await fetch(`http://localhost:5000/api/users/search?q=${encodeURIComponent(query)}`, {
+            const res = await fetch(`${API_BASE_URL}/api/users/search?q=${encodeURIComponent(query)}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const data = await res.json();
@@ -201,7 +278,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
         setIsSending(true);
         try {
             const promises = selectedRecipients.map(recipient =>
-                fetch('http://localhost:5000/api/messages', {
+                fetch(`${API_BASE_URL}/api/messages`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -238,11 +315,11 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
     const activeReaction = REACTION_TYPES.find(r => r.id === myReaction?.type);
 
     return (
-        <div className="bg-white border border-gray-100/50 rounded-3xl p-6 mb-8 hover:shadow-[0_8px_40px_-12px_rgba(0,0,0,0.1)] transition-all duration-300 relative group/card">
+        <div className="bg-white border border-gray-100/50 rounded-xl md:rounded-2xl p-3 md:p-4 mb-3 md:mb-4 hover:shadow-md transition-all duration-300 relative group/card overflow-hidden">
             {/* Header */}
             <div className="flex items-start gap-4 mb-4">
                 <Link href={`/profile/${post.user?._id}`} className="relative shrink-0 transition-transform hover:scale-105">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full border-[3px] border-white shadow-md flex items-center justify-center font-bold text-blue-800 text-lg overflow-hidden ring-1 ring-black/5">
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-100 to-indigo-50 rounded-full border-2 border-white shadow-sm flex items-center justify-center font-bold text-blue-800 text-base overflow-hidden ring-1 ring-black/5">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {post.user?.profilePic ? <img src={post.user.profilePic} alt={post.user.name} className="w-full h-full object-cover" /> : (post.user?.name ? post.user.name.charAt(0) : '?')}
                     </div>
@@ -254,8 +331,8 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                         </div>
                     )}
                 </Link>
-                <div className="flex-1 pt-1 min-w-0">
-                    <h4 className="flex items-center flex-wrap gap-2 text-base font-bold text-gray-900 leading-tight">
+                <div className="flex-1 pt-0.5 min-w-0">
+                    <h4 className="flex items-center flex-wrap gap-2 text-sm font-bold text-gray-900 leading-tight">
                         <Link href={`/profile/${post.user?._id}`} className="hover:text-blue-700 transition-colors truncate">
                             {post.user?.name}
                         </Link>
@@ -280,7 +357,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                             onClick={async () => {
                                 if (!confirm(t('post.confirm_delete') || 'Are you sure you want to delete this post?')) return;
                                 try {
-                                    const res = await fetch(`http://localhost:5000/api/posts/${post._id}`, {
+                                    const res = await fetch(`${API_BASE_URL}/api/posts/${post._id}`, {
                                         method: 'DELETE',
                                         headers: { 'Authorization': `Bearer ${user?.token}` }
                                     });
@@ -298,7 +375,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                     <button
                         onClick={async () => {
                             try {
-                                const res = await fetch(`http://localhost:5000/api/posts/${post._id}/save`, {
+                                const res = await fetch(`${API_BASE_URL}/api/posts/${post._id}/save`, {
                                     method: 'POST',
                                     headers: { 'Authorization': `Bearer ${user?.token}` }
                                 });
@@ -334,8 +411,8 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
             )}
 
             {post.content && (
-                <div className="text-gray-800 text-[15px] leading-relaxed mb-4 whitespace-pre-wrap">
-                    {renderRichContent(post.content, post.mentions)}
+                <div className="text-gray-800 text-sm md:text-[14.5px] leading-relaxed mb-3 whitespace-pre-wrap">
+                    {richContent}
                 </div>
             )}
 
@@ -356,21 +433,31 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                                 <p className="text-[10px] text-gray-500">{new Date(post.originalPost.createdAt).toLocaleDateString()}</p>
                             </div>
                         </div>
-                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">{renderRichContent(post.originalPost.content, post.originalPost.mentions)}</p>
+                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">{richOriginalContent}</p>
                         {post.originalPost.mediaUrl && (
                             <div className="rounded-xl overflow-hidden border border-white shadow-sm bg-black">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={post.originalPost.mediaUrl} className="w-full h-auto max-h-60 object-contain opacity-95" alt="Repost Media" />
-                            </div>
-                        )}
-                        {post.originalPost.mediaType === 'pdf' && (
-                            <div className="bg-white p-3 rounded-xl border border-blue-100 flex items-center gap-3 mt-2">
-                                <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <span className="text-xs font-bold text-gray-700">{t('post.doc_attachment')}</span>
+                                {post.originalPost.mediaType === 'video' ? (
+                                    <video
+                                        ref={repostVideoRef}
+                                        src={post.originalPost.mediaUrl}
+                                        controls
+                                        loop
+                                        playsInline
+                                        className="w-full h-auto max-h-60"
+                                    />
+                                ) : post.originalPost.mediaType === 'pdf' ? (
+                                    <div className="bg-white p-3 flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className="text-xs font-bold text-gray-700">{t('post.doc_attachment')}</span>
+                                    </div>
+                                ) : (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
+                                    <img src={post.originalPost.mediaUrl} className="w-full h-auto max-h-60 object-contain opacity-95" alt="Repost Media" loading="lazy" />
+                                )}
                             </div>
                         )}
                     </div>
@@ -389,30 +476,45 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                     )}
 
                     {post.mediaUrl && (
-                        <div className="mb-4 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                        <div className="-mx-3 md:-mx-4 mb-4 bg-gray-50 border-y border-gray-100/50 flex items-center justify-center overflow-hidden">
                             {post.mediaType === 'image' ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                     src={post.mediaUrl}
                                     alt="Post Media"
-                                    className="w-full h-auto max-h-[500px] object-contain bg-gray-50"
+                                    loading="lazy"
+                                    className="w-full h-auto max-h-[600px] object-contain transition-all hover:scale-[1.01] duration-500"
+                                />
+                            ) : post.mediaType === 'video' ? (
+                                <video
+                                    ref={videoRef}
+                                    src={post.mediaUrl}
+                                    controls
+                                    loop
+                                    playsInline
+                                    className="w-full h-auto max-h-[600px] bg-black shadow-inner"
                                 />
                             ) : (
-                                <div className="p-6 bg-blue-50 flex items-center justify-between group">
+                                <div className="w-full p-4 md:p-6 bg-blue-50/50 flex items-center justify-between group px-6 md:px-8">
                                     <div className="flex items-center space-x-4">
-                                        <div className="text-4xl">📄</div>
+                                        <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center text-3xl transform -rotate-3 group-hover:rotate-0 transition-transform">
+                                            📄
+                                        </div>
                                         <div>
                                             <p className="text-sm font-black text-blue-900 uppercase tracking-tighter">{t('post.doc_attachment')}</p>
-                                            <p className="text-[10px] font-bold text-blue-600">{t('post.doc_hint')}</p>
+                                            <p className="text-[10px] font-bold text-blue-600/70">{t('post.doc_hint')}</p>
                                         </div>
                                     </div>
                                     <a
                                         href={post.mediaUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-md group-hover:scale-105"
+                                        className="bg-blue-700 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95 flex items-center gap-2"
                                     >
                                         {t('post.view_pdf')}
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
                                     </a>
                                 </div>
                             )}
@@ -602,7 +704,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                                 onClick={async () => {
                                     if (confirm('Repost this to your feed?')) {
                                         try {
-                                            const res = await fetch('http://localhost:5000/api/posts', {
+                                            const res = await fetch(`${API_BASE_URL}/api/posts`, {
                                                 method: 'POST',
                                                 headers: {
                                                     'Content-Type': 'application/json',
@@ -639,7 +741,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                                         try {
                                             const formData = new FormData();
                                             formData.append('sharedPost', post._id);
-                                            const res = await fetch('http://localhost:5000/api/stories', {
+                                            const res = await fetch(`${API_BASE_URL}/api/stories`, {
                                                 method: 'POST',
                                                 headers: { 'Authorization': `Bearer ${user?.token}` },
                                                 body: formData
@@ -670,7 +772,7 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
                                     if (thoughts) {
                                         (async () => {
                                             try {
-                                                const res = await fetch('http://localhost:5000/api/posts', {
+                                                const res = await fetch(`${API_BASE_URL}/api/posts`, {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',
@@ -870,4 +972,6 @@ export default function PostCard({ post, onDelete, showDelete = false }: { post:
             }
         </div >
     );
-}
+});
+
+export default PostCard;

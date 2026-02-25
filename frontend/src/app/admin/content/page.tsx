@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface Post {
     _id: string;
@@ -29,7 +30,7 @@ export default function AdminContent() {
 
     const fetchPosts = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/content', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/content`, {
                 headers: { 'Authorization': `Bearer ${currentUser?.token}` }
             });
             if (res.ok) {
@@ -46,7 +47,7 @@ export default function AdminContent() {
     const handleDelete = async (postId: string) => {
         if (!confirm('Are you sure you want to delete this content? This action cannot be undone.')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/content/${postId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/content/${postId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${currentUser?.token}`

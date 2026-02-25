@@ -1,21 +1,63 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 import { FiBookmark, FiCheckCircle, FiShare2, FiCalendar, FiFilter, FiDownload, FiGlobe } from 'react-icons/fi';
 
-export default function CurrentAffairsPage() {
+import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+const CurrentAffairsContent = () => {
     const { user, loading: authLoading } = useAuth();
     const { t } = useLanguage();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [activeTab, setActiveTab] = useState('today'); // today, yesterday, week
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [entries, setEntries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const categories = ['All', 'National', 'Karnataka', 'International', 'Economy', 'Science & Tech', 'Polity', 'Sports', 'Awards', 'Appointments'];
+    const categories = [
+        { name: t('ca.cat.all'), value: 'All' },
+        { name: t('ca.cat.polity'), value: 'Polity' },
+        { name: t('ca.cat.economy'), value: 'Economy' },
+        { name: t('ca.cat.science'), value: 'Science & Technology' },
+        { name: t('ca.cat.environment'), value: 'Environment' },
+        { name: t('ca.cat.international'), value: 'International Relations' },
+        { name: t('ca.cat.schemes'), value: 'Government Schemes' },
+        { name: t('ca.cat.karnataka'), value: 'Karnataka State Affairs' },
+        { name: t('ca.cat.misc'), value: 'Miscellaneous' },
+        { name: t('ca.cat.sports'), value: 'Sports' },
+        { name: t('ca.cat.awards'), value: 'Awards' },
+        { name: t('ca.cat.appointments'), value: 'Appointments' }
+    ];
+
+    useEffect(() => {
+        const cat = searchParams.get('category');
+        if (cat) {
+            const slugToValue: Record<string, string> = {
+                'polity': 'Polity',
+                'economy': 'Economy',
+                'science-tech': 'Science & Technology',
+                'environment': 'Environment',
+                'international-relations': 'International Relations',
+                'government-schemes': 'Government Schemes',
+                'karnataka-state-affairs': 'Karnataka State Affairs',
+                'miscellaneous': 'Miscellaneous',
+                'sports': 'Sports',
+                'awards': 'Awards',
+                'appointments': 'Appointments'
+            };
+            setSelectedCategory(slugToValue[cat] || 'All');
+        } else {
+            setSelectedCategory('All');
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         if (user) {
@@ -26,7 +68,7 @@ export default function CurrentAffairsPage() {
     const fetchEntries = async () => {
         setLoading(true);
         try {
-            let url = `http://localhost:5000/api/current-affairs?dateFilter=${activeTab}`;
+            let url = `${API_BASE_URL}/api/current-affairs?dateFilter=${activeTab}`;
             if (selectedCategory !== 'All') {
                 url += `&category=${selectedCategory}`;
             }
@@ -50,7 +92,7 @@ export default function CurrentAffairsPage() {
 
     const handleMarkRead = async (id: string) => {
         try {
-            await fetch(`http://localhost:5000/api/current-affairs/${id}/read`, {
+            await fetch(`${API_BASE_URL}/api/current-affairs/${id}/read`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -63,7 +105,7 @@ export default function CurrentAffairsPage() {
 
     const handleToggleSave = async (id: string) => {
         try {
-            await fetch(`http://localhost:5000/api/current-affairs/${id}/save`, {
+            await fetch(`${API_BASE_URL}/api/current-affairs/${id}/save`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -81,19 +123,8 @@ export default function CurrentAffairsPage() {
     };
 
     const getCatLabel = (cat: string) => {
-        const map: { [key: string]: string } = {
-            'All': 'all',
-            'National': 'national',
-            'Karnataka': 'karnataka',
-            'International': 'international',
-            'Economy': 'economy',
-            'Science & Tech': 'science',
-            'Polity': 'polity',
-            'Sports': 'sports',
-            'Awards': 'awards',
-            'Appointments': 'appointments'
-        };
-        return t(`ca.cat.${map[cat]}` as any) || cat;
+        // Simple fallback
+        return cat;
     };
 
     if (authLoading) return <div className="p-10 text-center">{t('common.loading')}</div>;
@@ -102,9 +133,7 @@ export default function CurrentAffairsPage() {
         <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
             <main className="max-w-7xl mx-auto px-6 pt-6 pb-10 flex flex-col md:flex-row gap-6">
-                <div className="hidden md:block w-[280px] shrink-0">
-                    <Sidebar />
-                </div>
+                <Sidebar />
 
                 <div className="flex-1 min-w-0 space-y-6">
                     {/* Header Card */}
@@ -147,14 +176,18 @@ export default function CurrentAffairsPage() {
                         <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
                             {categories.map(cat => (
                                 <button
-                                    key={cat}
-                                    onClick={() => setSelectedCategory(cat)}
-                                    className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-colors border ${selectedCategory === cat
+                                    key={cat.value}
+                                    onClick={() => {
+                                        setSelectedCategory(cat.value);
+                                        // Update URL without refresh
+                                        // router.push(`?category=${cat.value}`); // Optional, maybe just fetch
+                                    }}
+                                    className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wide whitespace-nowrap transition-colors border ${selectedCategory === cat.value
                                         ? 'bg-blue-600 text-white border-blue-600'
                                         : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                                         }`}
                                 >
-                                    {getCatLabel(cat)}
+                                    {cat.name}
                                 </button>
                             ))}
                         </div>
@@ -172,25 +205,49 @@ export default function CurrentAffairsPage() {
                         <div className="grid gap-6">
                             {entries.map(entry => (
                                 <div key={entry._id} className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow group relative overflow-hidden">
-                                    {/* Exam Tags */}
                                     <div className="flex flex-wrap gap-2 mb-4">
-                                        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-[9px] font-black uppercase tracking-widest">
-                                            {getCatLabel(entry.category)}
+                                        <span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${entry.primaryCategory === 'Polity' ? 'bg-indigo-50 text-indigo-700' :
+                                            entry.primaryCategory === 'Economy' ? 'bg-green-50 text-green-700' :
+                                                entry.primaryCategory === 'Science & Technology' ? 'bg-purple-50 text-purple-700' :
+                                                    'bg-blue-50 text-blue-700'
+                                            }`}>
+                                            {entry.primaryCategory || entry.category}
                                         </span>
-                                        {entry.relatedExams.map((exam: string) => (
-                                            <span key={exam} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-md text-[9px] font-bold uppercase tracking-widest">
-                                                {exam}
+                                        {entry.secondaryCategory && (
+                                            <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-[9px] font-bold uppercase tracking-widest border border-gray-100">
+                                                {entry.secondaryCategory}
                                             </span>
-                                        ))}
+                                        )}
+                                        {entry.difficulty && (
+                                            <span className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-widest border ${entry.difficulty === 'Easy' ? 'border-green-200 text-green-600' :
+                                                entry.difficulty === 'Moderate' ? 'border-yellow-200 text-yellow-600' :
+                                                    'border-red-200 text-red-600'
+                                                }`}>
+                                                {entry.difficulty}
+                                            </span>
+                                        )}
                                     </div>
 
                                     <h3 className="text-xl font-black text-gray-900 mb-3 leading-tight group-hover:text-blue-800 transition-colors">
                                         {entry.title}
                                     </h3>
 
-                                    <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-line mb-6 font-medium">
-                                        {entry.description}
-                                    </p>
+                                    {/* Short Summary (Bullet Points) */}
+                                    <div className="text-gray-600 text-sm leading-relaxed mb-6 font-medium">
+                                        {entry.shortSummary ? (
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                {entry.shortSummary.split('\n').slice(0, 3).map((point: string, idx: number) => (
+                                                    <li key={idx} className="pl-1">{point.replace(/^-\s*/, '')}</li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="line-clamp-3">{entry.description || entry.fullSummary}</p>
+                                        )}
+                                    </div>
+
+                                    <Link href={`/current-affairs/${entry._id}`} className="inline-block mt-2 text-[11px] font-black uppercase tracking-widest text-blue-600 hover:underline">
+                                        Read Full Analysis &rarr;
+                                    </Link>
 
                                     {/* Action Bar */}
                                     <div className="flex items-center justify-between pt-4 border-t border-gray-50">
@@ -243,5 +300,13 @@ export default function CurrentAffairsPage() {
                 </div>
             </main>
         </div>
+    );
+};
+
+export default function CurrentAffairsPage() {
+    return (
+        <Suspense fallback={<div className="p-20 text-center font-bold">Loading...</div>}>
+            <CurrentAffairsContent />
+        </Suspense>
     );
 }

@@ -2,6 +2,7 @@ const asyncHandler = require('express-async-handler');
 const Story = require('../models/Story');
 const Message = require('../models/Message');
 const { createNotification } = require('../utils/notificationHelper');
+const { emitAdminEvent } = require('../socket');
 
 // @desc    Create a story
 // @route   POST /api/stories
@@ -41,6 +42,12 @@ const createStory = asyncHandler(async (req, res) => {
         .populate('user', 'name profilePic')
         .populate('mentions', 'name');
     res.status(201).json(populated);
+
+    emitAdminEvent('NEW_STORY', {
+        id: populated._id,
+        user: populated.user.name,
+        mediaType: populated.mediaType
+    });
 });
 
 // @desc    Get active stories

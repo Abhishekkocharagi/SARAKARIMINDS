@@ -1,0 +1,15 @@
+{
+    "ignore": [
+        ".git",
+        "node_modules",
+        "uploads",
+        "*.log",
+        "temp",
+        ".cache"
+    ],
+    "watch": [
+        "src",
+        "index.js"
+    ],
+    "ext": "js,mjs,cjs,json"
+}

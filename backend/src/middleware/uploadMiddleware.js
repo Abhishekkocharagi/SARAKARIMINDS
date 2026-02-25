@@ -16,21 +16,56 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: async (req, file) => {
-        let folder = 'sarkariminds/messages';
-        let resource_type = 'auto';
-
-        if (file.mimetype.startsWith('image/')) {
-            resource_type = 'image';
-        } else if (file.mimetype.startsWith('video/')) {
-            resource_type = 'video';
-        } else {
-            resource_type = 'raw';
+        let folder = 'sarkariminds/general';
+        if (req.originalUrl.includes('exams')) {
+            folder = 'sarkariminds/exams';
+        } else if (req.originalUrl.includes('posts')) {
+            folder = 'sarkariminds/posts';
+        } else if (req.originalUrl.includes('messages')) {
+            folder = 'sarkariminds/messages';
         }
 
+        const fileExt = file.originalname.split('.').pop().toLowerCase();
+        const fileName = file.originalname.split('.').slice(0, -1).join('.') || 'file';
+        const safeName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const timestamp = Date.now();
+
+        // PDF is a special case in Cloudinary.
+        // If uploaded as 'image', it allows transformations and gets application/pdf header.
+        // If uploaded as 'raw', it's just a binary blob.
+        if (file.mimetype === 'application/pdf') {
+            return {
+                folder: folder,
+                resource_type: 'image', // Best for PDFs to be served as application/pdf
+                public_id: `${timestamp}-${safeName}`, // NO EXTENSION in public_id for 'image' type
+                format: 'pdf', // Explicitly set format to pdf
+                flags: 'attachment:false' // Ensure it's not forced as attachment
+            };
+        }
+
+        if (file.mimetype.startsWith('image/')) {
+            return {
+                folder: folder,
+                resource_type: 'image',
+                public_id: `${timestamp}-${safeName}`,
+                format: fileExt
+            };
+        }
+
+        if (file.mimetype.startsWith('video/')) {
+            return {
+                folder: folder,
+                resource_type: 'video',
+                public_id: `${timestamp}-${safeName}`,
+                format: fileExt
+            };
+        }
+
+        // For everything else (docs, sheets, etc)
         return {
             folder: folder,
-            resource_type: resource_type,
-            public_id: `${Date.now()}-${file.originalname.split('.')[0]}`
+            resource_type: 'raw',
+            public_id: `${timestamp}-${safeName}.${fileExt}` // MUST include extension for 'raw'
         };
     }
 });

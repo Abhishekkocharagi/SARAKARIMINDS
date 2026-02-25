@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { FiTrash2, FiPlus, FiCheckCircle, FiAlertCircle } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 
 const subjects = [
     'General Knowledge',
@@ -54,7 +55,7 @@ export default function AdminQuizPage() {
 
     const fetchStatus = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/quiz/admin/status', {
+            const res = await fetch(`${API_BASE_URL}/api/quiz/admin/status`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -69,7 +70,7 @@ export default function AdminQuizPage() {
     const fetchTodayQuestions = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/quiz/admin/today/${encodeURIComponent(selectedSubject)}`, {
+            const res = await fetch(`${API_BASE_URL}/api/quiz/admin/today/${encodeURIComponent(selectedSubject)}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -92,7 +93,7 @@ export default function AdminQuizPage() {
 
         setSubmitting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/quiz/admin/add', {
+            const res = await fetch(`${API_BASE_URL}/api/quiz/admin/add`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,7 +130,7 @@ export default function AdminQuizPage() {
         if (!confirm('Are you sure you want to delete this question?')) return;
 
         try {
-            const res = await fetch(`http://localhost:5000/api/quiz/admin/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/quiz/admin/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });

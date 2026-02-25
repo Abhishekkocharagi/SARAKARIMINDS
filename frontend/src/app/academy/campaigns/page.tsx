@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 export default function MyCampaigns() {
     const { user } = useAuth();
@@ -17,7 +18,7 @@ export default function MyCampaigns() {
 
     const fetchCampaigns = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/campaigns/my', {
+            const res = await fetch(`${API_BASE_URL}/api/campaigns/my`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 import PostModal from './PostModal';
 import MentionDropdown from './MentionDropdown';
 
@@ -77,10 +78,15 @@ export default function StoryBar() {
     const { t } = useLanguage();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const progressInterval = useRef<NodeJS.Timeout | null>(null);
+    const storyGroupsRef = useRef(storyGroups);
+
+    useEffect(() => {
+        storyGroupsRef.current = storyGroups;
+    }, [storyGroups]);
 
     const fetchStories = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/stories', {
+            const res = await fetch(`${API_BASE_URL}/api/stories`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
@@ -135,7 +141,7 @@ export default function StoryBar() {
         if (mentionSearch.length >= 2) {
             const fetchUsers = async () => {
                 try {
-                    const res = await fetch(`http://localhost:5000/api/users/search?q=${mentionSearch}`, {
+                    const res = await fetch(`${API_BASE_URL}/api/users/search?q=${mentionSearch}`, {
                         headers: { 'Authorization': `Bearer ${user?.token}` }
                     });
                     const data = await res.json();
@@ -206,7 +212,7 @@ export default function StoryBar() {
     const markAsViewed = async (storyId: string) => {
         if (!user) return;
         try {
-            await fetch(`http://localhost:5000/api/stories/${storyId}/view`, {
+            await fetch(`${API_BASE_URL}/api/stories/${storyId}/view`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
@@ -255,11 +261,18 @@ export default function StoryBar() {
 
     const handleNext = () => {
         if (activeGroupIndex === null) return;
-        const group = storyGroups[activeGroupIndex];
+
+        const currentGroups = storyGroupsRef.current;
+        const group = currentGroups[activeGroupIndex];
+
+        if (!group) {
+            setActiveGroupIndex(null);
+            return;
+        }
 
         if (currentStoryIndex < group.stories.length - 1) {
             setCurrentStoryIndex(prev => prev + 1);
-        } else if (activeGroupIndex < storyGroups.length - 1) {
+        } else if (activeGroupIndex < currentGroups.length - 1) {
             setActiveGroupIndex(prev => (prev !== null ? prev + 1 : null));
             setCurrentStoryIndex(0);
         } else {
@@ -301,7 +314,7 @@ export default function StoryBar() {
             formData.append('tags', JSON.stringify(tags));
             if (media) formData.append('media', media);
 
-            const res = await fetch('http://localhost:5000/api/stories', {
+            const res = await fetch(`${API_BASE_URL}/api/stories`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${user?.token}` },
                 body: formData
@@ -334,7 +347,7 @@ export default function StoryBar() {
     const [replyText, setReplyText] = useState('');
     const handleReact = async (storyId: string, type: string) => {
         try {
-            await fetch(`http://localhost:5000/api/stories/${storyId}/react`, {
+            await fetch(`${API_BASE_URL}/api/stories/${storyId}/react`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
                 body: JSON.stringify({ type })
@@ -348,7 +361,7 @@ export default function StoryBar() {
         e.preventDefault();
         if (!replyText.trim()) return;
         try {
-            await fetch(`http://localhost:5000/api/stories/${storyId}/reply`, {
+            await fetch(`${API_BASE_URL}/api/stories/${storyId}/reply`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token}` },
                 body: JSON.stringify({ text: replyText })
@@ -362,7 +375,7 @@ export default function StoryBar() {
         // @ts-expect-error
         if (!confirm(t('story.confirm_delete') || 'Delete this story?')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/stories/${storyId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/stories/${storyId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -375,7 +388,7 @@ export default function StoryBar() {
 
     const fetchStoryViewers = async (storyId: string) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/stories/${storyId}/viewers`, {
+            const res = await fetch(`${API_BASE_URL}/api/stories/${storyId}/viewers`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -418,7 +431,7 @@ export default function StoryBar() {
         });
     };
 
-    const activeStory = activeGroupIndex !== null ? storyGroups[activeGroupIndex].stories[currentStoryIndex] : null;
+    const activeStory = activeGroupIndex !== null && storyGroups[activeGroupIndex] ? storyGroups[activeGroupIndex].stories[currentStoryIndex] : null;
 
     return (
         <div className="flex space-x-4 overflow-x-auto no-scrollbar py-2 px-1">
@@ -426,9 +439,9 @@ export default function StoryBar() {
             <div className="flex flex-col items-center flex-shrink-0 cursor-pointer group">
                 <div
                     onClick={() => setIsPostModalOpen(true)}
-                    className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-lg hover:shadow-blue-600/50 hover:scale-110 transition-all duration-300 border-4 border-white"
+                    className="w-14 h-14 md:w-15 md:h-15 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-md hover:scale-110 transition-all duration-300 border-[3px] border-white"
                 >
-                    <span className="text-white text-3xl font-bold">+</span>
+                    <span className="text-white text-2xl font-bold">+</span>
                 </div>
                 <span className="text-[10px] mt-1 font-black text-gray-800 uppercase tracking-tighter">Add Post</span>
             </div>
@@ -444,9 +457,9 @@ export default function StoryBar() {
                             setShowAddStory(true);
                         }
                     }}
-                    className={`w-16 h-16 rounded-full p-[2px] border-2 ${storyGroups.some(g => g.user._id === user?._id) ? 'border-blue-600' : 'border-dashed border-gray-300'} group-hover:border-blue-500 transition-colors`}
+                    className={`w-14 h-14 md:w-15 md:h-15 rounded-full p-[1.5px] border-2 ${storyGroups.some(g => g.user._id === user?._id) ? 'border-blue-600' : 'border-dashed border-gray-300'} group-hover:border-blue-500 transition-colors`}
                 >
-                    <div className="w-full h-full bg-gray-50 rounded-full flex items-center justify-center relative border-2 border-white overflow-hidden text-blue-600">
+                    <div className="w-full h-full bg-gray-50 rounded-full flex items-center justify-center relative border-[1.5px] border-white overflow-hidden text-blue-600">
                         {user?.profilePic && storyGroups.some(g => g.user._id === user?._id) ? (
                             <img src={user.profilePic} className="w-full h-full object-cover" />
                         ) : (
@@ -474,8 +487,8 @@ export default function StoryBar() {
                         onClick={() => openStory(originalIndex)}
                         className="flex flex-col items-center flex-shrink-0 cursor-pointer group"
                     >
-                        <div className={`w-16 h-16 rounded-full p-[2px] border-[2.5px] ${group.hasUnviewed ? 'border-blue-600' : 'border-gray-300'}`}>
-                            <div className="w-full h-full bg-blue-50 rounded-full flex items-center justify-center font-black text-blue-800 border-2 border-white overflow-hidden uppercase transition-transform hover:scale-105">
+                        <div className={`w-14 h-14 md:w-15 md:h-15 rounded-full p-[1.5px] border-2 ${group.hasUnviewed ? 'border-blue-600' : 'border-gray-300'}`}>
+                            <div className="w-full h-full bg-blue-50 rounded-full flex items-center justify-center font-black text-blue-800 border-[1.5px] border-white overflow-hidden uppercase transition-transform hover:scale-105">
                                 {group.user.profilePic && group.user.profilePic.trim() ? (
                                     <img src={group.user.profilePic} alt="" className="w-full h-full object-cover" />
                                 ) : (
@@ -483,7 +496,7 @@ export default function StoryBar() {
                                 )}
                             </div>
                         </div>
-                        <span className={`text-[10px] mt-1 font-black truncate w-16 text-center uppercase tracking-tighter ${group.hasUnviewed ? 'text-gray-800' : 'text-gray-400'}`}>
+                        <span className={`text-[9px] mt-1 font-black truncate w-14 text-center uppercase tracking-tighter ${group.hasUnviewed ? 'text-gray-800' : 'text-gray-400'}`}>
                             {group.user.name?.split(' ')[0] || 'Aspirant'}
                         </span>
                     </div>
@@ -503,7 +516,7 @@ export default function StoryBar() {
 
                         {/* Progress Bars */}
                         <div className="flex space-x-1 p-2 pt-4 absolute top-0 left-0 right-0 z-50">
-                            {storyGroups[activeGroupIndex].stories.map((s, idx) => (
+                            {storyGroups[activeGroupIndex] && storyGroups[activeGroupIndex].stories.map((s, idx) => (
                                 <div key={s._id} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
                                     <div
                                         className="h-full bg-white transition-all duration-100 ease-linear"

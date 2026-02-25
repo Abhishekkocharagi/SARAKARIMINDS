@@ -5,7 +5,7 @@ const DailyNewspaper = require('../models/DailyNewspaper');
 // @access  Private
 exports.getNewspapers = async (req, res) => {
     try {
-        const newspapers = await DailyNewspaper.find({ isVisible: true })
+        const newspapers = await DailyNewspaper.find({ isVisible: true, status: 'approved' }) // Only approved
             .sort({ date: -1 })
             .populate('uploadedBy', 'name')
             .lean();
@@ -58,11 +58,11 @@ exports.getNewspaperById = async (req, res) => {
 // @access  Private/Admin
 exports.createNewspaper = async (req, res) => {
     try {
-        const { name, date, thumbnailUrl } = req.body;
+        const { name, date, thumbnailUrl, summary } = req.body;
         let fileUrl = req.body.fileUrl;
         let fileType = req.body.fileType;
 
-        // Handle uploaded file
+        // Handle uploaded file if present
         if (req.file) {
             const today = new Date().toISOString().split('T')[0];
             const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -70,17 +70,20 @@ exports.createNewspaper = async (req, res) => {
             fileType = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
         }
 
-        if (!name || !fileUrl) {
-            return res.status(400).json({ message: 'Please provide name and a file' });
+        if (!name) {
+            return res.status(400).json({ message: 'Please provide a name for the news' });
         }
 
         const newspaper = await DailyNewspaper.create({
             name,
             date: date || new Date(),
             fileUrl,
-            fileType: fileType || (fileUrl.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'),
+            fileType: fileType || (fileUrl?.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'),
             thumbnailUrl,
-            uploadedBy: req.user._id
+            uploadedBy: req.user._id,
+            summary: summary || '',
+            status: 'approved', // Manual news is approved by default
+            isVisible: true
         });
 
         const populatedNewspaper = await DailyNewspaper.findById(newspaper._id)
@@ -88,8 +91,8 @@ exports.createNewspaper = async (req, res) => {
 
         res.status(201).json(populatedNewspaper);
     } catch (error) {
-        console.error('Error creating newspaper:', error);
-        res.status(500).json({ message: 'Failed to create newspaper' });
+        console.error('Error creating news entry:', error);
+        res.status(500).json({ message: 'Failed to create news entry' });
     }
 };
 
@@ -98,7 +101,7 @@ exports.createNewspaper = async (req, res) => {
 // @access  Private/Admin
 exports.updateNewspaper = async (req, res) => {
     try {
-        const { name, date, thumbnailUrl, isVisible } = req.body;
+        const { name, date, thumbnailUrl, isVisible, summary, status } = req.body;
         let fileUrl = req.body.fileUrl;
         let fileType = req.body.fileType;
 
@@ -114,6 +117,8 @@ exports.updateNewspaper = async (req, res) => {
             const baseUrl = `${req.protocol}://${req.get('host')}`;
             fileUrl = `${baseUrl}/uploads/newspapers/${today}/${req.file.filename}`;
             fileType = req.file.mimetype === 'application/pdf' ? 'pdf' : 'image';
+
+            // Re-summarize if new PDF uploaded? (Optional, maybe ask user. For now, let's not auto-re-summarize on update unless asked)
         }
 
         // Update fields
@@ -123,6 +128,8 @@ exports.updateNewspaper = async (req, res) => {
         if (fileType !== undefined) newspaper.fileType = fileType;
         if (thumbnailUrl !== undefined) newspaper.thumbnailUrl = thumbnailUrl;
         if (isVisible !== undefined) newspaper.isVisible = isVisible;
+        if (summary !== undefined) newspaper.summary = summary;
+        if (status !== undefined) newspaper.status = status;
 
         await newspaper.save();
 

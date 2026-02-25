@@ -3,37 +3,34 @@ const MentorGroup = require('../models/MentorGroup');
 const GroupMembership = require('../models/GroupMembership');
 const User = require('../models/User');
 const Post = require('../models/Post');
+const Message = require('../models/Message');
 
 // @desc    Create a new paid group
 // @route   POST /api/groups
 // @access  Private/Mentor
 const createGroup = asyncHandler(async (req, res) => {
-    const { name, description, examCategory, price, paymentType, maxMembers, groupIcon } = req.body;
+    const { name, description, examCategory, price, paymentType, maxMembers } = req.body;
 
-    // DEBUG: Temporary logs for authorization debugging
-    console.log('Group Creation Request:', {
-        userId: req.user._id,
-        role: req.user.role,
-        isVerified: req.user.isVerified,
-        body: req.body
-    });
-
-    // STRICT CHECK: Role must be mentor, academy or admin AND verified
-    if (!['mentor', 'academy', 'admin'].includes(req.user.role) || !req.user.isVerified) {
-        res.status(403); // Using 403 Forbidden is more appropriate than 401 Unauthorized for role mismatches
-        throw new Error(`Access denied: Only verified mentors or academies can create groups. Current role: ${req.user.role}, Verified: ${!!req.user.isVerified}`);
+    // Every verified user can create a community
+    if (!req.user.isVerified) {
+        res.status(403);
+        throw new Error(`Access denied: Your account must be verified to create a community.`);
     }
+
+    const groupIcon = req.files?.groupIcon ? req.files.groupIcon[0].path : '';
+    const paymentQrImage = req.files?.paymentQrImage ? req.files.paymentQrImage[0].path : '';
 
     const group = await MentorGroup.create({
         mentor: req.user._id,
         name,
         description,
         examCategory,
-        price,
-        paymentType,
-        maxMembers,
+        price: Number(price) || 0,
+        isPaid: Number(price) > 0,
+        paymentType: paymentType || (Number(price) > 0 ? 'monthly' : 'one-time'),
+        maxMembers: Number(maxMembers) || 100,
         groupIcon,
-        paymentQrImage: req.file ? req.file.path : req.body.paymentQrImage // Save uploaded file or fallback to string
+        paymentQrImage
     });
 
     res.status(201).json(group);
@@ -164,10 +161,22 @@ const getAllGroups = asyncHandler(async (req, res) => {
         _id: { $nin: myGroups.map(g => g._id) }
     }).populate('mentor', 'name profilePic');
 
+    // 4. Managed Communities (Created by this user)
+    const managedGroups = await MentorGroup.find({ mentor: req.user._id });
+
+    // 5. Pending Memberships
+    const pendingMemberships = await GroupMembership.find({
+        user: req.user._id,
+        paymentStatus: 'pending'
+    });
+    const pendingGroupIds = pendingMemberships.map(m => m.group.toString());
+
     res.json({
         myCommunities: myGroups,
         paidCommunities: paidGroups,
-        freeCommunities: freeGroups
+        freeCommunities: freeGroups,
+        managedCommunities: managedGroups,
+        pendingGroupIds
     });
 });
 
@@ -255,6 +264,46 @@ const approveMembership = asyncHandler(async (req, res) => {
     res.json({ message: 'Membership approved', membership });
 });
 
+// @desc    Reject a membership request (Mentor action)
+// @route   DELETE /api/groups/memberships/:id/reject
+// @access  Private/Mentor
+const rejectMembership = asyncHandler(async (req, res) => {
+    const membership = await GroupMembership.findById(req.params.id).populate('group');
+    if (!membership) {
+        res.status(404);
+        throw new Error('Request not found');
+    }
+
+    if (membership.group.mentor.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized');
+    }
+
+    await membership.deleteOne();
+    res.json({ message: 'Membership request rejected' });
+});
+
+// @desc    Get pending membership requests for a group
+// @route   GET /api/groups/:id/pending-members
+// @access  Private/Mentor
+const getPendingMembers = asyncHandler(async (req, res) => {
+    const group = await MentorGroup.findById(req.params.id);
+    if (!group) {
+        res.status(404);
+        throw new Error('Group not found');
+    }
+
+    if (group.mentor.toString() !== req.user._id.toString()) {
+        res.status(401);
+        throw new Error('Not authorized');
+    }
+
+    const requests = await GroupMembership.find({ group: req.params.id, paymentStatus: 'pending' })
+        .populate('user', 'name profilePic email');
+
+    res.json(requests);
+});
+
 // @desc    Get single group details (for Mentor Management)
 // @route   GET /api/groups/:id
 // @access  Private
@@ -279,6 +328,7 @@ const getGroupDetails = asyncHandler(async (req, res) => {
         ...group.toObject(),
         isWrapper: true, // Just to tag response
         isMember: !!membership,
+        isAdmin: membership?.role === 'admin',
         isOwner: group.mentor.toString() === req.user._id.toString()
     });
 });
@@ -353,6 +403,76 @@ const updateGroupStatus = asyncHandler(async (req, res) => {
     res.json(group);
 });
 
+// @desc    Update group chat settings (Only admins can chat toggle)
+// @route   PUT /api/groups/:id/chat-settings
+// @access  Private/Owner
+const updateChatSettings = asyncHandler(async (req, res) => {
+    const { allowOnlyAdminsChat } = req.body;
+    const group = await MentorGroup.findById(req.params.id);
+
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+    if (group.mentor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
+
+    group.allowOnlyAdminsChat = allowOnlyAdminsChat;
+    await group.save();
+    res.json(group);
+});
+
+// @desc    Add member manually (By Owner)
+// @route   POST /api/groups/:id/add-member
+// @access  Private/Owner
+const addMemberManually = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const group = await MentorGroup.findById(req.params.id);
+
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+    if (group.mentor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
+
+    const userToAdd = await User.findOne({ email });
+    if (!userToAdd) return res.status(404).json({ message: 'User not found with this email' });
+
+    // Check if already a member
+    const existing = await GroupMembership.findOne({ user: userToAdd._id, group: group._id });
+    if (existing && existing.paymentStatus === 'active') return res.status(400).json({ message: 'User already a member' });
+
+    if (existing) {
+        existing.paymentStatus = 'active';
+        await existing.save();
+    } else {
+        await GroupMembership.create({
+            user: userToAdd._id,
+            group: group._id,
+            paymentStatus: 'active',
+            amountPaid: 0 // Free manual add
+        });
+    }
+
+    // Update count
+    group.memberCount = await GroupMembership.countDocuments({ group: group._id, paymentStatus: 'active' });
+    await group.save();
+
+    res.json({ message: 'Member added successfully' });
+});
+
+// @desc    Update member role (Promote to Admin / Dismiss as Admin)
+// @route   PUT /api/groups/:id/members/:userId/role
+// @access  Private/Owner
+const updateMemberRole = asyncHandler(async (req, res) => {
+    const { role } = req.body; // 'member' or 'admin'
+    const group = await MentorGroup.findById(req.params.id);
+
+    if (!group) return res.status(404).json({ message: 'Group not found' });
+    if (group.mentor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
+
+    const membership = await GroupMembership.findOne({ user: req.params.userId, group: group._id });
+    if (!membership) return res.status(404).json({ message: 'Membership not found' });
+
+    membership.role = role;
+    await membership.save();
+
+    res.json({ message: `Member ${role === 'admin' ? 'promoted to admin' : 'dismissed to member'} successfully` });
+});
+
 // @desc    Delete a group
 // @route   DELETE /api/groups/:id
 // @access  Private/Mentor
@@ -388,18 +508,32 @@ const createGroupPost = asyncHandler(async (req, res) => {
     const group = await MentorGroup.findById(req.params.id);
 
     if (!group) return res.status(404).json({ message: 'Group not found' });
-    if (group.mentor.toString() !== req.user._id.toString()) return res.status(401).json({ message: 'Not authorized' });
 
-    const post = await Post.create({
-        user: req.user._id,
+    const isOwner = group.mentor.toString() === req.user._id.toString();
+    const membership = await GroupMembership.findOne({ user: req.user._id, group: group._id, paymentStatus: 'active' });
+
+    // Logic: Only owner and admins can post if allowOnlyAdminsChat is true
+    if (group.allowOnlyAdminsChat) {
+        const isAdmin = membership?.role === 'admin';
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ message: 'Only admins can chat in this group' });
+        }
+    } else {
+        // If everyone can chat, still must be owner or active member
+        if (!isOwner && !membership) {
+            return res.status(401).json({ message: 'Not authorized to post in this group' });
+        }
+    }
+
+    const message = await Message.create({
+        sender: req.user._id,
         group: group._id,
-        content,
-        mediaUrl,
-        mediaType,
-        postType: 'regular' // Or specific types if needed
+        text: content,
+        fileUrl: mediaUrl,
+        fileType: mediaType
     });
 
-    res.status(201).json(post);
+    res.status(201).json(message);
 });
 
 // @desc    Get group posts
@@ -418,11 +552,11 @@ const getGroupPosts = asyncHandler(async (req, res) => {
         throw new Error('Not authorized to view this group content');
     }
 
-    const posts = await Post.find({ group: group._id })
-        .populate('user', 'name profilePic')
-        .sort({ createdAt: -1 });
+    const messages = await Message.find({ group: group._id })
+        .populate('sender', 'name profilePic')
+        .sort({ createdAt: 1 });
 
-    res.json(posts);
+    res.json(messages);
 });
 
 
@@ -440,5 +574,10 @@ module.exports = {
     getAllGroups,
     requestJoinGroup,
     approveMembership,
+    rejectMembership,
+    getPendingMembers,
+    updateChatSettings,
+    addMemberManually,
+    updateMemberRole,
     deleteGroup
 };

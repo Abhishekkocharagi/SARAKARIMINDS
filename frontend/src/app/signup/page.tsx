@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 interface Exam {
     _id: string;
@@ -49,7 +50,7 @@ export default function SignupPage() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/exams');
+            const res = await fetch(`${API_BASE_URL}/api/exams`);
             if (res.ok) setExamsList(await res.json());
         } catch (err) { console.error(err); }
     };
@@ -75,7 +76,7 @@ export default function SignupPage() {
 
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/send-otp', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -99,7 +100,7 @@ export default function SignupPage() {
 
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/verify-register', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/verify-register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

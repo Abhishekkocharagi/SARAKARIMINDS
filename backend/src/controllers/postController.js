@@ -1,10 +1,15 @@
 const asyncHandler = require('express-async-handler');
 const Post = require('../models/Post');
+const { emitAdminEvent } = require('../socket');
 
 // @desc    Get all posts
 // @route   GET /api/posts
 // @access  Private
 const getPosts = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
     const posts = await Post.find({})
         .populate('user', 'name profilePic accountType exams')
         .populate('comments.user', 'name profilePic')
@@ -13,7 +18,10 @@ const getPosts = asyncHandler(async (req, res) => {
             populate: { path: 'user', select: 'name profilePic accountType' }
         })
         .populate('mentions', 'name profilePic')
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
+
     res.json(posts);
 });
 
@@ -48,7 +56,13 @@ const createPost = asyncHandler(async (req, res) => {
 
     if (req.file) {
         mediaUrl = req.file.path;
-        mediaType = req.file.mimetype.includes('pdf') ? 'pdf' : 'image';
+        if (req.file.mimetype.includes('pdf')) {
+            mediaType = 'pdf';
+        } else if (req.file.mimetype.includes('video')) {
+            mediaType = 'video';
+        } else {
+            mediaType = 'image';
+        }
     }
 
     if (!content && !mediaUrl) {
@@ -105,6 +119,12 @@ const createPost = asyncHandler(async (req, res) => {
         .populate('mentions', 'name profilePic');
 
     res.status(201).json(populatedPost);
+
+    emitAdminEvent('NEW_POST', {
+        id: populatedPost._id,
+        user: populatedPost.user.name,
+        content: populatedPost.content.substring(0, 50)
+    });
 });
 
 // @desc    Like a post
@@ -183,6 +203,12 @@ const commentPost = asyncHandler(async (req, res) => {
 
         const updatedPost = await Post.findById(req.params.id).populate('comments.user', 'name profilePic');
         res.status(201).json(updatedPost.comments);
+
+        emitAdminEvent('NEW_COMMENT', {
+            postId: post._id,
+            user: req.user.name,
+            text: text.substring(0, 50)
+        });
     } else {
         res.status(404);
         throw new Error('Post not found');

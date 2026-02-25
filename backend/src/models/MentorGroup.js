@@ -52,6 +52,10 @@ const mentorGroupSchema = mongoose.Schema({
     paymentQrImage: {
         type: String, // URL to uploaded QR code
         default: ''
+    },
+    allowOnlyAdminsChat: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

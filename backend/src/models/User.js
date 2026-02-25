@@ -193,6 +193,8 @@ const userSchema = new mongoose.Schema({
     timestamps: true
 });
 
+userSchema.index({ name: 'text' });
+
 userSchema.methods.matchPassword = async function (enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password);
 };

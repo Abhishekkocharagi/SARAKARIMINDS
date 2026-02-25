@@ -36,7 +36,7 @@ const fileFilter = (req, file, cb) => {
 const newspaperUpload = multer({
     storage: storage,
     limits: {
-        fileSize: 20 * 1024 * 1024 // 20MB Limit
+        fileSize: 40 * 1024 * 1024 // 40MB Limit
     },
     fileFilter: fileFilter
 });

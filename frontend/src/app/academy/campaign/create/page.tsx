@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/config';
 
 export default function CreateCampaign() {
     const { user } = useAuth();
@@ -42,7 +43,7 @@ export default function CreateCampaign() {
                 }
             };
 
-            const res = await fetch('http://localhost:5000/api/campaigns', {
+            const res = await fetch(`${API_BASE_URL}/api/campaigns`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

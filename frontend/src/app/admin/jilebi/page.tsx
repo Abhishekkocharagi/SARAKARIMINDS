@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { FiPlus, FiTrash2, FiEdit2, FiCalendar, FiBox } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 
 interface JilebiPuzzle {
     _id: string;
@@ -46,7 +47,7 @@ export default function AdminJilebiPage() {
     const fetchPuzzles = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/admin/jilebi', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/jilebi`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -88,8 +89,8 @@ export default function AdminJilebiPage() {
 
         try {
             const url = editingId
-                ? `http://localhost:5000/api/admin/jilebi/${editingId}`
-                : 'http://localhost:5000/api/admin/jilebi';
+                ? `${API_BASE_URL}/api/admin/jilebi/${editingId}`
+                : `${API_BASE_URL}/api/admin/jilebi`;
 
             const res = await fetch(url, {
                 method: editingId ? 'PUT' : 'POST',
@@ -146,7 +147,7 @@ export default function AdminJilebiPage() {
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this puzzle?')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/jilebi/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/jilebi/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -191,7 +192,6 @@ export default function AdminJilebiPage() {
                                         <option value="sequence">Sequence (ಕ್ರಮ)</option>
                                     </select>
                                 </div>
-                                ...
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Difficulty</label>
                                     <select

@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
@@ -36,7 +37,7 @@ export default function NotificationsPage() {
     const fetchNotifications = async () => {
         if (!user) return;
         try {
-            const res = await fetch('http://localhost:5000/api/notifications', {
+            const res = await fetch(`${API_BASE_URL}/api/notifications`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const data = await res.json();
@@ -47,7 +48,7 @@ export default function NotificationsPage() {
     const markAllAsRead = async () => {
         if (!user) return;
         try {
-            const res = await fetch('http://localhost:5000/api/notifications/read', {
+            const res = await fetch(`${API_BASE_URL}/api/notifications/read`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -62,7 +63,7 @@ export default function NotificationsPage() {
     const markSingleAsRead = async (id: string) => {
         if (!user) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+            const res = await fetch(`${API_BASE_URL}/api/notifications/${id}/read`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -77,7 +78,7 @@ export default function NotificationsPage() {
         if (user) {
             fetchNotifications();
             // Automatically mark all as read when visiting notifications page
-            fetch('http://localhost:5000/api/notifications/read', {
+            fetch(`${API_BASE_URL}/api/notifications/read`, {
                 method: 'PUT',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             }).then(() => {

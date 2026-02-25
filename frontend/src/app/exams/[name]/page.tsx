@@ -7,13 +7,23 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { FiBook, FiFileText, FiBell, FiUsers, FiAward } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 
-export default function ExamDetailsPage() {
+import { Suspense } from 'react';
+
+function ExamDetailsContent() {
     const { name } = useParams();
     const searchParams = useSearchParams();
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
+    const [activeTab, setActiveTab] = useState('overview');
+
+    useEffect(() => {
+        if (searchParams) {
+            const tab = searchParams.get('tab');
+            if (tab) setActiveTab(tab);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchExamDetails();
@@ -21,7 +31,7 @@ export default function ExamDetailsPage() {
 
     const fetchExamDetails = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/exams/${name}`);
+            const res = await fetch(`${API_BASE_URL}/api/exams/${name}`);
             if (res.ok) {
                 setData(await res.json());
             }
@@ -33,7 +43,7 @@ export default function ExamDetailsPage() {
     };
 
     if (loading) return <div className="p-20 text-center font-bold">Loading...</div>;
-    if (!data) return <div className="p-20 text-center text-red-500 font-bold">Exam not found</div>;
+    if (!data || !data.exam) return <div className="p-20 text-center text-red-500 font-bold">Exam not found</div>;
 
     const { exam, updates, documents, communities } = data;
 
@@ -89,7 +99,7 @@ export default function ExamDetailsPage() {
                     </div>
 
                     {/* Academy Partner Section */}
-                    {exam.officialPartnerAcademy && (
+                    {exam.officialPartnerAcademy && typeof exam.officialPartnerAcademy === 'object' && (
                         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center justify-between">
                             <div className="flex items-center gap-6">
                                 <div className="w-16 h-16 bg-blue-50 rounded-xl border border-blue-100 p-2 flex items-center justify-center overflow-hidden">
@@ -118,7 +128,7 @@ export default function ExamDetailsPage() {
 
                     {/* Tabs */}
                     <div className="bg-white rounded-2xl px-6 pt-6 shadow-sm border border-gray-100 flex gap-8 overflow-x-auto custom-scrollbar">
-                        {['overview', 'syllabus', 'updates', 'documents', 'communities', 'mentors'].map((tab) => (
+                        {['overview', 'syllabus', 'updates', 'documents', 'previousYearPapers', 'modelPapers', 'communities', 'mentors'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -127,7 +137,7 @@ export default function ExamDetailsPage() {
                                     : 'text-gray-400 hover:text-gray-600'
                                     }`}
                             >
-                                {tab}
+                                {tab.replace(/([A-Z])/g, ' $1')}
                             </button>
                         ))}
                     </div>
@@ -136,10 +146,12 @@ export default function ExamDetailsPage() {
                     <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm min-h-[400px]">
                         {activeTab === 'overview' && (
                             <div className="space-y-6">
-                                <section>
-                                    <h3 className="text-xl font-black text-gray-900 mb-4">Exam Overview</h3>
-                                    <p className="text-gray-600 leading-relaxed whitespace-pre-line">{exam.overview || "Updates coming soon: Official overview, job roles, and department details are being finalized."}</p>
-                                </section>
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Exam Overview</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100 italic">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.overview || "Official overview is being updated."}
+                                    </p>
+                                </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t">
                                     <section>
                                         <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-3">Job Role</h4>
@@ -155,10 +167,10 @@ export default function ExamDetailsPage() {
 
                         {activeTab === 'syllabus' && (
                             <div className="space-y-6">
-                                <h3 className="text-xl font-black text-gray-900 mb-4">Exam Pattern & Syllabus</h3>
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Detailed Syllabus</h3>
                                 <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
                                     <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
-                                        {exam.examPattern || "Updates coming soon: Detailed syllabus and exam pattern documentation will be available shortly."}
+                                        {exam.syllabus || "Syllabus details are being updated."}
                                     </p>
                                 </div>
                             </div>
@@ -166,26 +178,19 @@ export default function ExamDetailsPage() {
 
                         {activeTab === 'updates' && (
                             <div className="space-y-6">
-                                <h3 className="text-xl font-black text-gray-900 mb-4">Latest Job Updates</h3>
-                                {updates.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-400 font-bold">No updates found for this exam newly.</div>
-                                ) : (
-                                    <div className="space-y-4">
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Latest Updates</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.updates || "Current updates are being compiled."}
+                                    </p>
+                                </div>
+                                {updates.length > 0 && (
+                                    <div className="space-y-4 pt-6 border-t mt-6">
+                                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Official Notices</h4>
                                         {updates.map((update: any) => (
-                                            <div key={update._id} className="p-6 border rounded-2xl hover:border-blue-200 transition-colors">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${update.type === 'Vacancy' ? 'bg-green-50 text-green-600' :
-                                                            update.type === 'Result' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
-                                                            }`}>
-                                                            {update.type}
-                                                        </span>
-                                                        <h4 className="text-lg font-black text-gray-900 mt-2">{update.title}</h4>
-                                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mt-1">Updates by <span className="text-blue-600 italic">{update.publisherName || "Admin"}</span></p>
-                                                    </div>
-                                                    <p className="text-[10px] text-gray-400 font-bold uppercase">{new Date(update.createdAt).toLocaleDateString()}</p>
-                                                </div>
-                                                <p className="text-sm text-gray-600 mt-3">{update.description}</p>
+                                            <div key={update._id} className="p-4 border rounded-xl">
+                                                <h5 className="font-bold text-gray-900 text-sm">{update.title}</h5>
+                                                <p className="text-xs text-gray-500 mt-1">{update.description}</p>
                                             </div>
                                         ))}
                                     </div>
@@ -195,27 +200,86 @@ export default function ExamDetailsPage() {
 
                         {activeTab === 'documents' && (
                             <div className="space-y-6">
-                                <h3 className="text-xl font-black text-gray-900 mb-4">Official Documents (PDF)</h3>
-                                {documents.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-400 font-bold">No official documents uploaded yet.</div>
-                                ) : (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Official Documents</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.documents || "Document list is being updated."}
+                                    </p>
+                                </div>
+                                {documents.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                                         {documents.map((doc: any) => (
-                                            <a
-                                                key={doc._id}
-                                                href={doc.fileUrl}
-                                                target="_blank"
-                                                className="p-4 border border-gray-100 rounded-xl flex items-center justify-between hover:bg-red-50 transition-colors group"
-                                            >
+                                            <div key={doc._id} className="p-4 border rounded-xl flex items-center justify-between hover:border-red-100 transition bg-white group shadow-sm">
                                                 <div className="flex items-center gap-3">
-                                                    <span className="text-2xl">📄</span>
+                                                    <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-red-500 text-xl group-hover:bg-red-500 group-hover:text-white transition-colors">
+                                                        📄
+                                                    </div>
                                                     <div>
-                                                        <p className="text-xs font-black text-gray-900">{doc.title}</p>
-                                                        <p className="text-[10px] text-gray-400 font-bold uppercase">{doc.category}</p>
+                                                        <p className="text-[10px] font-black text-gray-900 uppercase tracking-tight">{doc.title}</p>
+                                                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{doc.category || 'Official Document'}</p>
                                                     </div>
                                                 </div>
-                                                <span className="bg-red-100 text-red-600 text-[10px] font-black px-2 py-1 rounded group-hover:bg-red-200 transition">PDF</span>
-                                            </a>
+                                                <div className="flex gap-2">
+                                                    <a
+                                                        href={doc.fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[8px] font-black bg-blue-50 text-blue-600 px-3 py-2 rounded-lg uppercase tracking-widest hover:bg-blue-600 hover:text-white transition shadow-sm"
+                                                    >
+                                                        View
+                                                    </a>
+                                                    <a
+                                                        href={doc.fileUrl}
+                                                        download={`${doc.title}.pdf`}
+                                                        className="text-[8px] font-black bg-gray-50 text-gray-500 px-3 py-2 rounded-lg uppercase tracking-widest hover:bg-gray-900 hover:text-white transition shadow-sm"
+                                                    >
+                                                        Download
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'previousYearPapers' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Previous Year Question Papers</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.previousYearPapers || "Previous papers are being uploaded."}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'modelPapers' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Model Question Papers</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.modelPapers || "Model papers are being compiled."}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'communities' && (
+                            <div className="space-y-6">
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Exam Communities</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.communities || "Community links are being updated."}
+                                    </p>
+                                </div>
+                                {communities.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                                        {communities.map((comm: any) => (
+                                            <div key={comm._id} className="p-6 border rounded-2xl">
+                                                <h4 className="font-black text-gray-900">{comm.name}</h4>
+                                                <button className="mt-4 text-[10px] font-black bg-gray-900 text-white px-4 py-2 rounded-lg uppercase">Join Group</button>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -224,56 +288,20 @@ export default function ExamDetailsPage() {
 
                         {activeTab === 'mentors' && (
                             <div className="space-y-6">
-                                <h3 className="text-xl font-black text-gray-900 mb-4">Verified Mentors & Academies</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    {exam.verifiedMentors?.map((mentor: any) => (
-                                        <div key={mentor._id} className="p-4 border rounded-xl flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-full overflow-hidden">
-                                                <img src={mentor.profilePic || "https://i.pravatar.cc/150"} className="w-full h-full object-cover" />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-gray-900">{mentor.name}</p>
-                                                <p className="text-[10px] text-blue-600 font-black uppercase">Verified Mentor</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {exam.verifiedAcademies?.map((academy: any) => (
-                                        <div key={academy._id} className="p-4 border rounded-xl flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
-                                                <img src={academy.profilePic || "https://i.pravatar.cc/150"} className="w-full h-full object-cover" />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-gray-900">{academy.name}</p>
-                                                <p className="text-[10px] text-purple-600 font-black uppercase">Official Academy</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    {(!exam.verifiedMentors?.length && !exam.verifiedAcademies?.length) && (
-                                        <p className="text-gray-400 text-xs font-bold col-span-full">No associated mentors or academies yet.</p>
-                                    )}
+                                <h3 className="text-xl font-black text-gray-900 mb-4">Expert Mentors</h3>
+                                <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                    <p className="text-gray-700 whitespace-pre-line leading-relaxed font-medium">
+                                        {exam.mentors || "Mentor pool is being finalized."}
+                                    </p>
                                 </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'communities' && (
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-xl font-black text-gray-900">Exam Communities</h3>
-                                </div>
-                                {communities.length === 0 ? (
-                                    <div className="text-center py-12 text-gray-400 font-bold">No communities created for this exam yet.</div>
-                                ) : (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                        {communities.map((comm: any) => (
-                                            <div key={comm._id} className="p-6 border rounded-2xl hover:shadow-md transition bg-gradient-to-br from-white to-gray-50/50">
-                                                <h4 className="text-lg font-black text-gray-900 uppercase tracking-tight">{comm.name}</h4>
-                                                <p className="text-[10px] text-gray-400 font-bold mt-1 line-clamp-2">{comm.description}</p>
-                                                <div className="mt-4 flex justify-between items-center">
-                                                    <span className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded">
-                                                        {comm.type === 'paid' ? `₹${comm.price}` : 'Free'}
-                                                    </span>
-                                                    <button className="text-[10px] font-black bg-gray-900 text-white px-4 py-2 rounded-lg uppercase tracking-widest hover:bg-blue-600 transition">Join Group</button>
+                                {exam.verifiedMentors?.length > 0 && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+                                        {exam.verifiedMentors.map((mentor: any) => (
+                                            <div key={mentor._id} className="p-4 border rounded-xl flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-gray-100 rounded-full overflow-hidden">
+                                                    <img src={mentor.profilePic || "https://i.pravatar.cc/150"} className="w-full h-full object-cover" />
                                                 </div>
+                                                <span className="font-bold text-sm">{mentor.name}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -284,5 +312,13 @@ export default function ExamDetailsPage() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function ExamDetailsPage() {
+    return (
+        <Suspense fallback={<div className="p-20 text-center font-bold">Loading...</div>}>
+            <ExamDetailsContent />
+        </Suspense>
     );
 }

@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 export default function AcademyDashboard() {
     const { user, loading: authLoading } = useAuth();
@@ -27,7 +28,7 @@ export default function AcademyDashboard() {
 
     const fetchStats = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/academy/stats', {
+            const res = await fetch(`${API_BASE_URL}/api/academy/stats`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -105,7 +106,7 @@ export default function AcademyDashboard() {
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-white border rounded-xl flex items-center justify-center overflow-hidden">
                                                 {msg.sender?.profilePic ? (
-                                                    <img src={`http://localhost:5000${msg.sender.profilePic}`} alt="" className="w-full h-full object-cover" />
+                                                    <img src={`${API_BASE_URL}${msg.sender.profilePic}`} alt="" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <span className="font-bold text-gray-400 text-xl">{msg.sender?.name?.charAt(0)}</span>
                                                 )}

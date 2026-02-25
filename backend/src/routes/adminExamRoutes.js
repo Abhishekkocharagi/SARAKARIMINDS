@@ -3,9 +3,11 @@ const router = express.Router();
 const {
     createExam,
     updateExam,
+    deleteExam,
     getExams,
     addJobUpdate,
     addDocument,
+    deleteDocument,
     linkMentorAcademy,
     getExamAnalytics,
     getVerifiedAcademies
@@ -19,10 +21,12 @@ router.route('/')
     .post(protect, admin, createExam);
 
 router.route('/:id')
-    .put(protect, admin, updateExam);
+    .put(protect, admin, updateExam)
+    .delete(protect, admin, deleteExam);
 
 router.post('/updates', protect, admin, addJobUpdate);
 router.post('/documents', protect, admin, upload.single('file'), addDocument);
+router.delete('/documents/:docId', protect, admin, deleteDocument);
 router.post('/upload-image', protect, admin, upload.single('file'), (req, res) => {
     if (req.file) {
         // req.file.path is already the full Cloudinary URL

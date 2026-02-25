@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 const subjects = [
     'General Knowledge',
@@ -40,7 +41,7 @@ export default function QuizPage() {
         setLoading(true);
         setError('');
         try {
-            const res = await fetch(`http://localhost:5000/api/quiz/${encodeURIComponent(selectedSubject)}`, {
+            const res = await fetch(`${API_BASE_URL}/api/quiz/${encodeURIComponent(selectedSubject)}`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -100,7 +101,7 @@ export default function QuizPage() {
         if (isSubjectCompleted() && questions.length === 5) {
             const recordCompletion = async () => {
                 try {
-                    const res = await fetch('http://localhost:5000/api/quiz/complete', {
+                    const res = await fetch(`${API_BASE_URL}/api/quiz/complete`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${user?.token}`

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FiMail, FiLock, FiArrowRight } from 'react-icons/fi';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 export default function LoginPage() {
     const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ export default function LoginPage() {
         e.preventDefault();
         setError('');
         try {
-            const res = await fetch('http://localhost:5000/api/auth/login', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })

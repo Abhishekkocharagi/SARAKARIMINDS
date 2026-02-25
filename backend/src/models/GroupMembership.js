@@ -25,6 +25,11 @@ const groupMembershipSchema = mongoose.Schema({
     },
     transactionId: {
         type: String
+    },
+    role: {
+        type: String,
+        enum: ['member', 'admin'],
+        default: 'member'
     }
 }, {
     timestamps: true

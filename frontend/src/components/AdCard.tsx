@@ -63,14 +63,14 @@ const AdCard: React.FC<AdCardProps> = ({ ad, variant }) => {
                 </svg>
             </div>
             <div className="p-6">
-                <div className="flex gap-6 items-start">
+                <div className="flex gap-4 md:gap-6 items-start">
                     <img
                         src={ad.imageUrl}
                         alt={ad.title}
-                        className="w-32 h-32 object-cover rounded-2xl shadow-lg group-hover:scale-105 transition-transform duration-300"
+                        className="w-24 h-24 md:w-28 md:h-28 object-cover rounded-xl shadow-md group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="flex-1 space-y-2">
-                        <h4 className="font-black text-xl text-gray-900 uppercase tracking-tight leading-none">{ad.title}</h4>
+                    <div className="flex-1 space-y-1 md:space-y-2">
+                        <h4 className="font-black text-base md:text-lg text-gray-900 uppercase tracking-tight leading-tight">{ad.title}</h4>
                         <p className="text-gray-600 text-sm leading-relaxed font-medium">
                             {ad.description}
                         </p>
