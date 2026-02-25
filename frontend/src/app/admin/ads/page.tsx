@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface Ad {
     _id: string;
@@ -44,7 +45,7 @@ export default function AdminAds() {
 
     const fetchAds = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/ads', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/ads`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -61,8 +62,8 @@ export default function AdminAds() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const url = editingAd
-            ? `http://localhost:5000/api/admin/ads/${editingAd._id}`
-            : 'http://localhost:5000/api/admin/ads/create';
+            ? `${API_BASE_URL}/api/admin/ads/${editingAd._id}`
+            : `${API_BASE_URL}/api/admin/ads/create`;
         const method = editingAd ? 'PUT' : 'POST';
 
         try {
@@ -93,7 +94,7 @@ export default function AdminAds() {
     const deleteAd = async (id: string) => {
         if (!confirm('Are you sure you want to delete this ad?')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/ads/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/ads/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
@@ -108,7 +109,7 @@ export default function AdminAds() {
     const toggleStatus = async (ad: Ad) => {
         const newStatus = ad.status === 'active' ? 'paused' : 'active';
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/ads/${ad._id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/ads/${ad._id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

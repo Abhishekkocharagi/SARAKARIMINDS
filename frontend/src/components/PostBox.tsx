@@ -3,6 +3,7 @@
 import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) {
     const [content, setContent] = useState('');
@@ -48,7 +49,7 @@ export default function PostBox({ refreshPosts }: { refreshPosts: () => void }) 
                 formData.append('media', media);
             }
 
-            const res = await fetch('http://localhost:5000/api/posts', {
+            const res = await fetch(`${API_BASE_URL}/api/posts`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user?.token}`

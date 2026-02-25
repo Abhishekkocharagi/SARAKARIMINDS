@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useParams, useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/config';
 
 interface Exam {
     _id: string;
@@ -16,9 +17,14 @@ interface Exam {
     examType: string;
     status: string;
     overview: string;
+    syllabus: string;
+    updates: string;
+    documents: string;
+    previousYearPapers: string;
+    modelPapers: string;
+    communities: string;
+    mentors: string;
     jobRole: string;
-    postingDepartments: string;
-    careerGrowth: string;
     salaryScale: string;
     eligibilityDetails: string;
     examPattern: string;
@@ -59,7 +65,7 @@ export default function AdminExamDetailsPage() {
 
     const fetchVerifiedAcademies = React.useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/exams/academies/verified', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams/academies/verified`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) setVerifiedAcademies(await res.json());
@@ -70,7 +76,7 @@ export default function AdminExamDetailsPage() {
 
     const fetchDocuments = React.useCallback(async (examName: string) => {
         try {
-            const res = await fetch(`http://localhost:5000/api/exams/${examName}`);
+            const res = await fetch(`${API_BASE_URL}/api/exams/${examName}`);
             if (res.ok) {
                 const data = await res.json();
                 setExamDocuments(data.documents || []);
@@ -82,7 +88,7 @@ export default function AdminExamDetailsPage() {
 
     const fetchExamDetails = React.useCallback(async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/exams`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -105,7 +111,7 @@ export default function AdminExamDetailsPage() {
     const handleSaveMaster = async () => {
         setSaving(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/exams/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -134,7 +140,7 @@ export default function AdminExamDetailsPage() {
     const handleAddUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const res = await fetch('http://localhost:5000/api/admin/exams/updates', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams/updates`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -171,7 +177,7 @@ export default function AdminExamDetailsPage() {
         fData.append('file', docFile);
 
         try {
-            const res = await fetch('http://localhost:5000/api/admin/exams/documents', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams/documents`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user?.token}`
@@ -182,12 +188,40 @@ export default function AdminExamDetailsPage() {
                 alert('Document uploaded successfully!');
                 setDocTitle('');
                 setDocFile(null);
-                setDocTitle('');
-                setDocFile(null);
                 if (exam?.name) fetchDocuments(exam.name);
+            } else {
+                const errData = await res.json();
+                alert(errData.message || 'Upload failed');
             }
         } catch (err) {
             console.error('Upload error:', err);
+            alert('An error occurred during upload');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDeleteDoc = async (docId: string) => {
+        if (!confirm('Are you sure you want to delete this document?')) return;
+
+        setSaving(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exams/documents/${docId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${user?.token}`
+                }
+            });
+            if (res.ok) {
+                alert('Document deleted');
+                if (exam?.name) fetchDocuments(exam.name);
+            } else {
+                const errData = await res.json();
+                alert(errData.message || 'Delete failed');
+            }
+        } catch (err) {
+            console.error('Delete error:', err);
+            alert('An error occurred during deletion');
         } finally {
             setSaving(false);
         }
@@ -259,6 +293,17 @@ export default function AdminExamDetailsPage() {
                                     className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-600 outline-none"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Status (Show/Hide in Preferences)</label>
+                                <select
+                                    value={formData.status || 'active'}
+                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-bold text-gray-800 focus:ring-2 focus:ring-blue-600 outline-none"
+                                >
+                                    <option value="active">Active (Visible)</option>
+                                    <option value="inactive">Inactive (Hidden)</option>
+                                </select>
+                            </div>
                         </div>
 
                         {/* Exam Logo Upload */}
@@ -296,7 +341,7 @@ export default function AdminExamDetailsPage() {
                                     if (examLogoFile) {
                                         const uploadData = new FormData();
                                         uploadData.append('file', examLogoFile);
-                                        const uploadRes = await fetch('http://localhost:5000/api/admin/exams/upload-image', {
+                                        const uploadRes = await fetch(`${API_BASE_URL}/api/admin/exams/upload-image`, {
                                             method: 'POST',
                                             headers: { 'Authorization': `Bearer ${user?.token}` },
                                             body: uploadData
@@ -307,7 +352,7 @@ export default function AdminExamDetailsPage() {
                                         }
                                     }
 
-                                    const res = await fetch(`http://localhost:5000/api/admin/exams/${id}`, {
+                                    const res = await fetch(`${API_BASE_URL}/api/admin/exams/${id}`, {
                                         method: 'PUT',
                                         headers: {
                                             'Content-Type': 'application/json',
@@ -385,7 +430,7 @@ export default function AdminExamDetailsPage() {
                                     if (partnerLogoFile) {
                                         const uploadData = new FormData();
                                         uploadData.append('file', partnerLogoFile);
-                                        const uploadRes = await fetch('http://localhost:5000/api/admin/exams/upload-image', {
+                                        const uploadRes = await fetch(`${API_BASE_URL}/api/admin/exams/upload-image`, {
                                             method: 'POST',
                                             headers: { 'Authorization': `Bearer ${user?.token}` },
                                             body: uploadData
@@ -395,7 +440,7 @@ export default function AdminExamDetailsPage() {
                                             logoUrl = upData.fileUrl;
                                         }
                                     }
-                                    const res = await fetch(`http://localhost:5000/api/admin/exams/${id}`, {
+                                    const res = await fetch(`${API_BASE_URL}/api/admin/exams/${id}`, {
                                         method: 'PUT',
                                         headers: {
                                             'Content-Type': 'application/json',
@@ -422,33 +467,88 @@ export default function AdminExamDetailsPage() {
                 )}
 
                 {activeTab === 'content' && (
-                    <div className="space-y-6 max-w-4xl">
-                        <h2 className="text-xl font-black text-gray-900 mb-4">Content Management</h2>
-                        <div className="space-y-4">
+                    <div className="space-y-8 max-w-4xl">
+                        <h2 className="text-xl font-black text-gray-900 mb-4">Detailed Content Management</h2>
+                        <div className="grid grid-cols-1 gap-6">
                             <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Overview (What is this exam?)</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Overview</label>
                                 <textarea
                                     value={formData.overview || ''}
                                     onChange={(e) => setFormData({ ...formData, overview: e.target.value })}
                                     className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter detailed exam overview..."
                                 />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Syllabus Details</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Syllabus</label>
                                 <textarea
-                                    value={formData.examPattern || ''}
-                                    onChange={(e) => setFormData({ ...formData, examPattern: e.target.value })}
-                                    placeholder="Brief pattern or rich text content..."
+                                    value={formData.syllabus || ''}
+                                    onChange={(e) => setFormData({ ...formData, syllabus: e.target.value })}
                                     className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter full syllabus details..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Updates</label>
+                                <textarea
+                                    value={formData.updates || ''}
+                                    onChange={(e) => setFormData({ ...formData, updates: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter latest news and updates..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Documents (Links/Description)</label>
+                                <textarea
+                                    value={formData.documents || ''}
+                                    onChange={(e) => setFormData({ ...formData, documents: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter links or descriptions for official documents..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Previous Year Question Papers</label>
+                                <textarea
+                                    value={formData.previousYearPapers || ''}
+                                    onChange={(e) => setFormData({ ...formData, previousYearPapers: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter links to previous year papers..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Model Question Papers</label>
+                                <textarea
+                                    value={formData.modelPapers || ''}
+                                    onChange={(e) => setFormData({ ...formData, modelPapers: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter links to model papers..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Communities</label>
+                                <textarea
+                                    value={formData.communities || ''}
+                                    onChange={(e) => setFormData({ ...formData, communities: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter community details or join links..."
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Mentor Details</label>
+                                <textarea
+                                    value={formData.mentors || ''}
+                                    onChange={(e) => setFormData({ ...formData, mentors: e.target.value })}
+                                    className="w-full bg-gray-50 border border-gray-100 p-4 rounded-xl font-medium text-gray-700 h-32 outline-none focus:ring-2 focus:ring-blue-600"
+                                    placeholder="Enter verified mentor profiles or descriptions..."
                                 />
                             </div>
                         </div>
                         <button
                             onClick={handleSaveMaster}
                             disabled={saving}
-                            className="bg-gray-900 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition disabled:opacity-50"
+                            className="bg-gray-900 text-white px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 transition disabled:opacity-50 mt-6"
                         >
-                            {saving ? 'Saving...' : 'Save Content'}
+                            {saving ? 'Saving...' : 'Save All Content'}
                         </button>
                     </div>
                 )}
@@ -563,7 +663,15 @@ export default function AdminExamDetailsPage() {
                                                     <p className="text-[10px] text-gray-400 font-bold uppercase">{doc.category}</p>
                                                 </div>
                                             </div>
-                                            <a href={doc.fileUrl} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline">View PDF →</a>
+                                            <div className="flex items-center gap-4">
+                                                <a href={doc.fileUrl} target="_blank" className="text-[10px] font-black text-blue-600 uppercase hover:underline">View PDF →</a>
+                                                <button
+                                                    onClick={() => handleDeleteDoc(doc._id)}
+                                                    className="text-[10px] font-black text-red-600 uppercase hover:underline"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </div>
                                     ))
                                 )}

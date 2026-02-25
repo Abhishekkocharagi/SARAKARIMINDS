@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { useParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
 import { formatDistanceToNow } from 'date-fns';
+import { API_BASE_URL } from '@/config';
 
 interface JobUpdate {
     _id: string;
@@ -36,7 +37,7 @@ export default function JobDetailsPage() {
         try {
             // Using relative path to avoid localhost issues if deployed, 
             // but for now, we know it's port 5000 based on previous files.
-            const res = await fetch(`http://localhost:5000/api/jobs/${id}`);
+            const res = await fetch(`${API_BASE_URL}/api/jobs/${id}`);
             if (res.ok) {
                 const data = await res.json();
                 setJob(data);

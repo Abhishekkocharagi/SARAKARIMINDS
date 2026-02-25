@@ -4,14 +4,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 import { TranslationKey } from '@/translations';
 
-const EXAMS: TranslationKey[] = [
-    'exam.kas', 'exam.fda', 'exam.sda',
-    'exam.pdo', 'exam.psi', 'exam.pc',
-    'exam.aeje', 'exam.hescom', 'exam.tet',
-    'exam.va', 'exam.pwd', 'exam.group_abc'
-];
+interface Exam {
+    _id: string;
+    name: string;
+    fullName: string;
+}
 
 export default function Register() {
     const { t } = useLanguage();
@@ -28,6 +28,7 @@ export default function Register() {
     });
     const [otpData, setOtpData] = useState({ otp: '' });
     const [loading, setLoading] = useState(false);
+    const [allExams, setAllExams] = useState<Exam[]>([]);
     const [passwordCriteria, setPasswordCriteria] = useState({
         length: false,
         letter: false,
@@ -42,6 +43,21 @@ export default function Register() {
             match: formData.password !== '' && formData.password === formData.confirmPassword,
         });
     }, [formData.password, formData.confirmPassword]);
+
+    useEffect(() => {
+        const fetchExams = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/exams`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setAllExams(data);
+                }
+            } catch (err) {
+                console.error('Failed to fetch exams:', err);
+            }
+        };
+        fetchExams();
+    }, []);
 
     const isPasswordValid = passwordCriteria.length && passwordCriteria.letter && passwordCriteria.match;
 
@@ -63,7 +79,7 @@ export default function Register() {
 
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/send-otp', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/send-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -87,7 +103,7 @@ export default function Register() {
 
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/auth/verify-register', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/verify-register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -179,15 +195,19 @@ export default function Register() {
                         <div className="space-y-2">
                             <p className="text-sm font-bold text-gray-500">{t('auth.register.pick_exams')}</p>
                             <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto no-scrollbar py-2 p-1">
-                                {EXAMS.map(examKey => (
-                                    <button
-                                        key={examKey}
-                                        onClick={() => toggleExam(examKey)}
-                                        className={`px-3 py-2 rounded-xl border-2 text-[10px] font-black uppercase transition ${formData.exams.includes(examKey) ? 'bg-blue-700 border-blue-700 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-blue-300'}`}
-                                    >
-                                        {t(examKey)}
-                                    </button>
-                                ))}
+                                {allExams.length > 0 ? (
+                                    allExams.map(exam => (
+                                        <button
+                                            key={exam._id}
+                                            onClick={() => toggleExam(exam.name)}
+                                            className={`px-3 py-2 rounded-xl border-2 text-[10px] font-black uppercase transition ${formData.exams.includes(exam.name) ? 'bg-blue-700 border-blue-700 text-white shadow-lg' : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-blue-300'}`}
+                                        >
+                                            {exam.name}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <p className="text-[10px] font-bold text-gray-400 italic">Fetching exams...</p>
+                                )}
                             </div>
                         </div>
 

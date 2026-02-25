@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface PendingMentor {
     _id: string;
@@ -29,7 +30,7 @@ export default function AdminMentors() {
 
     const fetchMentors = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/mentors/pending', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/mentors/pending`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -46,7 +47,7 @@ export default function AdminMentors() {
     const handleAction = async (userId: string, action: 'approve' | 'reject') => {
         if (!confirm(`Are you sure you want to ${action} this mentor?`)) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/mentors/${action}/${userId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/mentors/${action}/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${user?.token}`
@@ -101,7 +102,7 @@ export default function AdminMentors() {
                                             {mentor.mentorApplication.documents.map((doc, i) => (
                                                 <a
                                                     key={i}
-                                                    href={`http://localhost:5000/${doc}`}
+                                                    href={`${API_BASE_URL}/${doc}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center justify-between p-3 rounded-xl bg-white hover:bg-blue-50 transition-colors border border-gray-200 group"

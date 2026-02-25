@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 import { FiCheck, FiInfo, FiArrowRight, FiRotateCcw, FiAward, FiAlertCircle, FiHelpCircle, FiX, FiArrowLeft } from 'react-icons/fi';
 
 interface Cell {
@@ -50,7 +51,7 @@ export default function WordPathGamePage() {
     const fetchPuzzle = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:5000/api/word-path/today', {
+            const res = await fetch(`${API_BASE_URL}/api/word-path/today`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const data = await res.json();
@@ -118,7 +119,7 @@ export default function WordPathGamePage() {
         setSubmitting(true);
         const duration = Math.floor((Date.now() - startTime) / 1000);
         try {
-            const res = await fetch('http://localhost:5000/api/word-path/submit', {
+            const res = await fetch(`${API_BASE_URL}/api/word-path/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -138,8 +139,8 @@ export default function WordPathGamePage() {
         }
     };
 
-    if (loading) return <div className="p-20 text-center font-black animate-pulse text-gray-400 uppercase tracking-widest">Generating Your Daily Word Path...</div>;
-    if (!puzzle) return <div className="p-20 text-center font-black text-amber-600 uppercase">Today's challenge is being prepared by the Mentor. Check back shortly!</div>;
+    if (loading) return <div className="p-20 text-center font-black animate-pulse text-gray-400 uppercase tracking-widest">{t('wordpath.loading')}</div>;
+    if (!puzzle) return <div className="p-20 text-center font-black text-amber-600 uppercase">{t('wordpath.not_ready')}</div>;
 
     const cellSize = 80;
     const gap = 12;
@@ -169,7 +170,7 @@ export default function WordPathGamePage() {
                 </div>
 
                 <div className="bg-gray-50 p-6 rounded-[2rem] border border-dashed border-gray-200">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 text-center">Sequential Legend (Out Box)</p>
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 text-center">{t('wordpath.legend')}</p>
                     <div className="flex flex-wrap justify-center gap-3">
                         {legend.map((item) => (
                             <div key={item.index} className="flex flex-col items-center">
@@ -249,7 +250,7 @@ export default function WordPathGamePage() {
                     </div>
 
                     <div className="flex items-center gap-2 text-gray-400 font-black text-[9px] uppercase tracking-widest">
-                        <FiInfo /> Path Length: {path.length} / 16
+                        <FiInfo /> {t('wordpath.path_len')} {path.length} / 16
                     </div>
                 </div>
 
@@ -258,7 +259,7 @@ export default function WordPathGamePage() {
                         <div className="space-y-4">
                             <div className="bg-blue-50 border-2 border-blue-100 p-8 rounded-[2.5rem] space-y-4 shadow-sm">
                                 <h4 className="flex items-center gap-2 text-blue-900 font-black text-xs uppercase tracking-widest">
-                                    <FiInfo /> Instructions
+                                    <FiInfo /> {t('wordpath.instructions')}
                                 </h4>
                                 <ul className="text-blue-800 font-bold leading-relaxed text-[11px] space-y-2 list-disc pl-4">
                                     <li>Follow the sequence: <strong>1 → 2 → 3...</strong></li>
@@ -271,7 +272,7 @@ export default function WordPathGamePage() {
                                 disabled={submitting || path.length < 16}
                                 className="w-full py-6 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-3 disabled:bg-gray-100 disabled:text-gray-300"
                             >
-                                {submitting ? 'Checking...' : 'Submit Path'} <FiArrowRight />
+                                {submitting ? 'Checking...' : t('wordpath.submit')} <FiArrowRight />
                             </button>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
@@ -279,13 +280,13 @@ export default function WordPathGamePage() {
                                     disabled={path.length === 0}
                                     className="py-4 bg-white text-blue-600 border border-blue-100 rounded-[1.5rem] font-black uppercase text-[9px] tracking-widest hover:bg-blue-50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                                 >
-                                    <FiRotateCcw className="rotate-180" /> Undo Move
+                                    <FiRotateCcw className="rotate-180" /> {t('wordpath.undo')}
                                 </button>
                                 <button
                                     onClick={() => setPath([])}
                                     className="py-4 bg-white text-gray-400 border rounded-[1.5rem] font-black uppercase text-[9px] tracking-widest hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <FiRotateCcw /> Reset Grid
+                                    <FiRotateCcw /> {t('wordpath.reset')}
                                 </button>
                             </div>
                         </div>
@@ -314,7 +315,7 @@ export default function WordPathGamePage() {
 
                         <div className="p-12 space-y-10">
                             <div className="space-y-4">
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Deciphered Word</p>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('wordpath.deciphered')}</p>
                                 <div className="min-h-[80px] flex items-center">
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-none break-words overflow-hidden w-full uppercase tracking-tighter">
                                         {targetWord}
@@ -325,7 +326,7 @@ export default function WordPathGamePage() {
                             <div className="w-full h-px bg-gray-100" />
 
                             <div className="space-y-6">
-                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Meaning & Insight</p>
+                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{t('wordpath.meaning')}</p>
                                 <p className="text-xl md:text-2xl font-bold text-gray-700 leading-snug whitespace-pre-wrap">
                                     {puzzle.explanation}
                                 </p>
@@ -335,7 +336,7 @@ export default function WordPathGamePage() {
                                 onClick={() => setShowModal(false)}
                                 className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-emerald-600 transition-all"
                             >
-                                Close Definition
+                                {t('wordpath.close')}
                             </button>
                         </div>
                     </div>

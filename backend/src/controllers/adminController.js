@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const MentorGroup = require('../models/MentorGroup');
 const AdminLog = require('../models/AdminLog');
 const GroupMembership = require('../models/GroupMembership');
+const { emitAdminEvent } = require('../socket');
 
 // @desc    Get platform stats
 // @route   GET /api/admin/stats

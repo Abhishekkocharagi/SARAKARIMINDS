@@ -6,15 +6,16 @@ import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 export default function DailyNewspaperPage() {
     const { user, loading: authLoading } = useAuth();
     const { t } = useLanguage();
     const router = useRouter();
     const [newspapers, setNewspapers] = useState<any[]>([]);
-    const [selectedNewspaper, setSelectedNewspaper] = useState<any>(null);
+    const [selectedNews, setSelectedNews] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [isFullScreen, setIsFullScreen] = useState(false);
+    const [viewMode, setViewMode] = useState<'summary' | 'pdf'>('summary');
 
     useEffect(() => {
         if (!authLoading && !user) {
@@ -30,7 +31,7 @@ export default function DailyNewspaperPage() {
 
     const fetchNewspapers = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/daily-newspapers', {
+            const res = await fetch(`${API_BASE_URL}/api/daily-newspapers`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -44,21 +45,16 @@ export default function DailyNewspaperPage() {
         }
     };
 
-    const handleViewNewspaper = async (newspaper: any) => {
-        setSelectedNewspaper(newspaper);
+    const handleViewNews = async (news: any) => {
+        setSelectedNews(news);
+        setViewMode('summary'); // Default to summary view as requested
 
         // Record view
         try {
-            await fetch(`http://localhost:5000/api/daily-newspapers/${newspaper._id}/view`, {
+            await fetch(`${API_BASE_URL}/api/daily-newspapers/${news._id}/view`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
-            // Update local state views count
-            setNewspapers(prev => prev.map(n =>
-                n._id === newspaper._id
-                    ? { ...n, views: n.views?.includes(user?._id) ? n.views : [...(n.views || []), user?._id] }
-                    : n
-            ));
         } catch (error) {
             console.error('Failed to record view:', error);
         }
@@ -67,245 +63,222 @@ export default function DailyNewspaperPage() {
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString(t('sidebar.language') === 'kn' ? 'kn-IN' : 'en-IN', {
             day: '2-digit',
-            month: 'short',
+            month: 'long',
             year: 'numeric'
         });
     };
 
-    // Grouping by date
-    const groupedNewspapers = newspapers.reduce((groups: any, newspaper: any) => {
-        const date = new Date(newspaper.date).toDateString();
-        if (!groups[date]) {
-            groups[date] = [];
-        }
-        groups[date].push(newspaper);
-        return groups;
-    }, {});
+    // Parse topic-wise content
+    const formatNewsContent = (content: string) => {
+        if (!content) return null;
 
-    // Sort dates (Latest first)
-    const sortedDates = Object.keys(groupedNewspapers).sort((a, b) => {
-        return new Date(b).getTime() - new Date(a).getTime();
-    });
+        // Split by topics (lines starting with #)
+        const parts = content.split(/(^#\s.*)/m);
+
+        return parts.map((part, index) => {
+            if (part.startsWith('#')) {
+                return (
+                    <h3 key={index} className="text-xl font-black text-blue-700 mt-10 mb-4 uppercase tracking-wider flex items-center gap-3">
+                        <span className="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+                        {part.replace('#', '').trim()}
+                    </h3>
+                );
+            }
+            return (
+                <div key={index} className="space-y-4">
+                    {part.split('\n').map((line, lIdx) => {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine) return null;
+
+                        // Handle bullet points
+                        if (trimmedLine.startsWith('*')) {
+                            return (
+                                <div key={lIdx} className="flex gap-4 items-start pl-2 group">
+                                    <span className="mt-2.5 w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 group-hover:bg-blue-600 transition-colors"></span>
+                                    <p className="text-gray-700 leading-relaxed font-medium">
+                                        {formatLineWithBold(trimmedLine.replace('*', '').trim())}
+                                    </p>
+                                </div>
+                            );
+                        }
+                        return <p key={lIdx} className="text-gray-600 leading-relaxed">{formatLineWithBold(trimmedLine)}</p>;
+                    })}
+                </div>
+            );
+        });
+    };
+
+    const formatLineWithBold = (line: string) => {
+        const parts = line.split(/(\*\*.*?\*\*)/);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={i} className="font-black text-gray-900">{part.slice(2, -2)}</strong>;
+            }
+            return part;
+        });
+    };
 
     if (authLoading || !user) return <div className="p-10 text-center">{t('common.loading')}</div>;
 
     return (
-        <div className="min-h-screen bg-[#F3F2EF] overflow-x-hidden">
+        <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
-            <main className="max-w-7xl mx-auto px-6 pt-6 pb-10 min-h-screen">
-                <div className="flex flex-col md:flex-row gap-6 items-start relative">
-                    {/* Left Sidebar - Always visible on desktop */}
-                    <div className="hidden md:block w-[280px] shrink-0">
-                        <Sidebar />
-                    </div>
+            <main className="max-w-7xl mx-auto px-4 md:px-6 pt-6 pb-12">
+                <div className="flex flex-col lg:flex-row gap-6 items-start">
+                    <Sidebar />
 
-                    {/* Content Area with Sliding panels */}
-                    <div className="flex-1 min-w-0 relative overflow-hidden bg-white border rounded-[2.5rem] shadow-sm flex min-h-[800px]">
+                    {/* Main Content Area */}
+                    <div className="flex-1 min-w-0 w-full">
+                        {selectedNews ? (
+                            /* DETAILED NEWS VIEW */
+                            <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                {/* News Header */}
+                                <div className="p-8 md:p-12 border-b bg-white">
+                                    <button
+                                        onClick={() => setSelectedNews(null)}
+                                        className="mb-8 flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] hover:text-blue-800 transition-all hover:-translate-x-1"
+                                    >
+                                        ← {t('news.back_to_archive')}
+                                    </button>
 
-                        {/* Slide 1: Archive List */}
-                        <div className={`w-full shrink-0 p-4 md:p-8 transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? '-translate-x-full opacity-0' : 'translate-x-0 opacity-100'
-                            }`}>
-                            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 shrink-0">
-                                <div>
-                                    <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-3">
-                                        <span className="text-4xl">📰</span>
-                                        {t('news.archive_title')}
+                                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                                        <div className="max-w-3xl">
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mb-4">
+                                                {formatDate(selectedNews.date)} • Exam Special
+                                            </p>
+                                            <h2 className="text-3xl md:text-4xl font-black text-gray-900 leading-tight uppercase tracking-tight">
+                                                {selectedNews.name}
+                                            </h2>
+                                        </div>
+
+                                        {selectedNews.fileUrl && (
+                                            <div className="flex bg-gray-100 p-1.5 rounded-2xl shrink-0">
+                                                <button
+                                                    onClick={() => setViewMode('summary')}
+                                                    className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'summary' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                                >
+                                                    ✍️ Summary
+                                                </button>
+                                                <button
+                                                    onClick={() => setViewMode('pdf')}
+                                                    className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${viewMode === 'pdf' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                                                >
+                                                    📄 Full Paper
+                                                </button>
+                                                <a
+                                                    href={selectedNews.fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="px-4 py-2.5 rounded-xl text-xs font-black text-gray-400 hover:text-blue-600 transition-all flex items-center justify-center"
+                                                    title="Open in New Tab"
+                                                >
+                                                    ↗️
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Content Body */}
+                                <div className="p-8 md:p-12 bg-white">
+                                    {viewMode === 'summary' ? (
+                                        <div className="max-w-4xl mx-auto">
+                                            {formatNewsContent(selectedNews.summary)}
+
+                                            <div className="mt-16 p-8 bg-blue-50/50 rounded-[2rem] border border-blue-100/50 flex flex-col md:flex-row items-center gap-6">
+                                                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-lg shadow-blue-200">💡</div>
+                                                <div>
+                                                    <h4 className="font-black text-blue-900 uppercase text-sm tracking-widest mb-1">Study Advice</h4>
+                                                    <p className="text-blue-700/80 font-medium">These topics are frequently asked in current affairs sections. Revise early morning for better retention!</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="w-full aspect-[4/5] bg-gray-100 rounded-[2rem] overflow-hidden border">
+                                            <iframe src={selectedNews.fileUrl} className="w-full h-full border-0" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-8 bg-gray-50 border-t flex flex-col md:flex-row justify-between items-center gap-4">
+                                    <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em]">SarkariMinds Premium News Portal</p>
+                                    <button
+                                        onClick={() => window.print()}
+                                        className="px-6 py-2 bg-white border border-gray-200 text-gray-900 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-gray-900 hover:text-white transition-all shadow-sm"
+                                    >
+                                        🖨️ Save as PDF
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            /* ARCHIVE LIST VIEW */
+                            <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 md:p-12">
+                                <header className="mb-12">
+                                    <div className="flex items-center gap-4 mb-2">
+                                        <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.3em] rounded-full">Updates Daily</span>
+                                    </div>
+                                    <h1 className="text-4xl font-black text-gray-900 uppercase tracking-tight">
+                                        Examiner's Choice News 📰
                                     </h1>
-                                    <p className="text-gray-500 font-bold uppercase text-[10px] tracking-widest mt-1">
-                                        {t('news.admin_hint')}
+                                    <p className="text-gray-500 font-bold uppercase text-xs tracking-widest mt-2 opacity-60">
+                                        Handcrafted news summaries for top government exams
                                     </p>
-                                </div>
-                                <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100">
-                                    <span className="text-blue-700 font-black text-xs uppercase tracking-widest">
-                                        {newspapers.length} {t('news.papers_count')}
-                                    </span>
-                                </div>
-                            </header>
+                                </header>
 
-                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
                                 {loading ? (
-                                    <div className="py-20 flex flex-col items-center justify-center space-y-4">
-                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700"></div>
-                                        <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">{t('news.fetching')}</p>
+                                    <div className="py-20 flex flex-col items-center justify-center space-y-6">
+                                        <div className="w-12 h-12 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin"></div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('news.fetching')}</p>
                                     </div>
                                 ) : newspapers.length === 0 ? (
-                                    <div className="py-20 text-center bg-gray-50 rounded-2xl border-2 border-dashed">
-                                        <h2 className="text-xl font-bold text-gray-600">{t('news.not_found')}</h2>
+                                    <div className="py-20 text-center bg-gray-50 rounded-[2rem] border-2 border-dashed border-gray-200">
+                                        <p className="text-3xl mb-4">📭</p>
+                                        <h2 className="text-xl font-black text-gray-400 uppercase tracking-tight">No News Posted Yet</h2>
                                     </div>
                                 ) : (
-                                    <div className="space-y-10">
-                                        {sortedDates.map(date => (
-                                            <section key={date}>
-                                                <div className="flex items-center gap-4 mb-6">
-                                                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] whitespace-nowrap">
-                                                        {formatDate(date)}
-                                                    </h3>
-                                                    <div className="h-[1px] bg-gray-100 w-full"></div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {newspapers.map((news) => (
+                                            <div
+                                                key={news._id}
+                                                onClick={() => handleViewNews(news)}
+                                                className="group cursor-pointer bg-white hover:bg-blue-50/30 border border-gray-100 hover:border-blue-200 rounded-[2rem] p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-100/50 flex flex-col h-full"
+                                            >
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl group-hover:bg-white group-hover:scale-110 transition-all duration-500 shadow-sm">
+                                                        🗓️
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase tracking-widest">
+                                                        Read Story
+                                                    </span>
                                                 </div>
+                                                <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2 group-hover:text-blue-700 transition">
+                                                    {news.name}
+                                                </h3>
+                                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">
+                                                    {formatDate(news.date)}
+                                                </p>
 
-                                                <div className="flex flex-col gap-2">
-                                                    {groupedNewspapers[date].map((newspaper: any) => (
-                                                        <div
-                                                            key={newspaper._id}
-                                                            onClick={() => handleViewNewspaper(newspaper)}
-                                                            className="group cursor-pointer bg-gray-50/50 hover:bg-blue-50 border border-transparent hover:border-blue-100 rounded-xl px-5 py-3 transition-all duration-200 flex items-center justify-between"
-                                                        >
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-xl group-hover:bg-white transition-colors">
-                                                                    📰
-                                                                </div>
-                                                                <div>
-                                                                    <h4 className="font-bold text-gray-900 group-hover:text-blue-700 transition text-base">
-                                                                        {newspaper.name}
-                                                                    </h4>
-                                                                    <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wider mt-0.5">
-                                                                        {formatDate(newspaper.date)}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-4">
-                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-tight">
-                                                                    {newspaper.views?.length || 0} {t('news.readers_stat')}
-                                                                </span>
-                                                                <svg className="w-4 h-4 text-gray-300 group-hover:text-blue-600 transition-all transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                                                                </svg>
-                                                            </div>
+                                                <div className="mt-auto pt-6 border-t border-gray-50 flex items-center justify-between">
+                                                    <div className="flex -space-x-2">
+                                                        <div className="w-6 h-6 rounded-full bg-blue-100 border-2 border-white"></div>
+                                                        <div className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white"></div>
+                                                        <div className="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-[8px] font-bold text-gray-400">
+                                                            +{Math.floor(Math.random() * 90) + 10}
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                                        Read by {news.views?.length || 0} students
+                                                    </div>
                                                 </div>
-                                            </section>
+                                            </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        </div>
-
-                        {/* Slide 2: Viewer Panel */}
-                        <div className={`w-full shrink-0 bg-white transition-all duration-700 ease-in-out transform flex flex-col ${selectedNewspaper ? '-translate-x-full opacity-100' : 'translate-x-0 opacity-0 shadow-2xl'
-                            }`}>
-                            {selectedNewspaper && (
-                                <>
-                                    <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0">
-                                        <div>
-                                            <button
-                                                onClick={() => setSelectedNewspaper(null)}
-                                                className="flex items-center gap-2 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-800 transition-all mb-1"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                                                </svg>
-                                                {t('news.back_to_archive')}
-                                            </button>
-                                            <h2 className="text-xl font-black text-gray-900 leading-tight uppercase tracking-tight line-clamp-1">
-                                                {selectedNewspaper.name}
-                                            </h2>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest hidden sm:block">
-                                                {formatDate(selectedNewspaper.date)}
-                                            </span>
-                                            <button
-                                                onClick={() => setSelectedNewspaper(null)}
-                                                className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition-all"
-                                            >
-                                                ✕
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 bg-gray-50 flex items-center justify-center p-2 md:p-4 overflow-hidden">
-                                        {selectedNewspaper.fileType === 'pdf' ? (
-                                            <div className="w-full h-full bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                                                <iframe
-                                                    src={selectedNewspaper.fileUrl}
-                                                    className="w-full h-full border-0"
-                                                    title={selectedNewspaper.name}
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="w-full h-full overflow-auto flex items-center justify-center bg-white rounded-2xl shadow-sm border border-gray-100">
-                                                <img
-                                                    src={selectedNewspaper.fileUrl}
-                                                    alt={selectedNewspaper.name}
-                                                    className="max-w-full max-h-full object-contain p-4"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="px-6 py-4 border-t bg-white flex justify-between items-center shrink-0">
-                                        <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.4em]">
-                                            {t('news.digital_preview')}
-                                        </p>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setIsFullScreen(true)}
-                                                className="px-6 py-2 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all flex items-center gap-2"
-                                            >
-                                                <span className="text-lg">⛶</span> {t('news.full_screen')}
-                                            </button>
-                                            <a
-                                                href={selectedNewspaper.fileUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-6 py-2 bg-gray-900 text-white rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-blue-700 transition-all"
-                                            >
-                                                {t('news.open_original')}
-                                            </a>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            {/* Full Screen Overlay */}
-            {isFullScreen && selectedNewspaper && (
-                <div className="fixed inset-0 z-[100] bg-white flex flex-col animate-in fade-in zoom-in duration-300">
-                    <div className="px-6 py-4 border-b flex justify-between items-center bg-white shrink-0 shadow-sm">
-                        <div className="flex items-center gap-4">
-                            <span className="text-2xl">📰</span>
-                            <div>
-                                <h2 className="text-xl font-black text-gray-900 leading-tight uppercase tracking-tight">
-                                    {selectedNewspaper.name}
-                                </h2>
-                                <p className="text-[10px] text-blue-600 font-bold uppercase tracking-[0.2em]">
-                                    {t('news.reading_mode')}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setIsFullScreen(false)}
-                            className="px-8 py-3 bg-red-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-red-700 transition-all flex items-center gap-2 shadow-lg hover:shadow-red-200"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                            </svg>
-                            {t('news.go_back')}
-                        </button>
-                    </div>
-                    <div className="flex-1 bg-gray-100 overflow-hidden">
-                        {selectedNewspaper.fileType === 'pdf' ? (
-                            <iframe
-                                src={selectedNewspaper.fileUrl}
-                                className="w-full h-full border-0"
-                                title={selectedNewspaper.name}
-                            />
-                        ) : (
-                            <div className="w-full h-full overflow-auto flex items-center justify-center p-8">
-                                <img
-                                    src={selectedNewspaper.fileUrl}
-                                    alt={selectedNewspaper.name}
-                                    className="max-w-full max-h-full object-contain shadow-2xl rounded-lg"
-                                />
-                            </div>
                         )}
                     </div>
                 </div>
-            )}
+            </main>
         </div>
     );
 }

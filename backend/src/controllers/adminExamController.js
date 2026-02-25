@@ -5,6 +5,7 @@ const ExamDocument = require('../models/ExamDocument');
 const Notification = require('../models/Notification');
 const User = require('../models/User');
 const Community = require('../models/Community');
+const { emitAdminEvent } = require('../socket');
 
 // ==========================================
 // EXAM MASTER MANAGEMENT
@@ -14,7 +15,7 @@ const Community = require('../models/Community');
 // @route   POST /api/admin/exams
 // @access  Private/Admin
 const createExam = asyncHandler(async (req, res) => {
-    const { name, fullName, conductingBody, logoUrl, examLevel, category, language, examType } = req.body;
+    const { name, fullName, conductingBody, logoUrl, examLevel, category, language, examType, status } = req.body;
 
     const examExists = await Exam.findOne({ name });
     if (examExists) {
@@ -30,10 +31,25 @@ const createExam = asyncHandler(async (req, res) => {
         examLevel,
         category,
         language,
-        examType
+        examType,
+        status: status || 'active',
+        overview: req.body.overview || '',
+        syllabus: req.body.syllabus || '',
+        updates: req.body.updates || '',
+        documents: req.body.documents || '',
+        previousYearPapers: req.body.previousYearPapers || '',
+        modelPapers: req.body.modelPapers || '',
+        communities: req.body.communities || '',
+        mentors: req.body.mentors || ''
     });
 
     res.status(201).json(exam);
+
+    emitAdminEvent('NEW_EXAM', {
+        id: exam._id,
+        name: exam.name,
+        category: exam.category
+    });
 });
 
 // @desc    Update exam details/content
@@ -54,14 +70,20 @@ const updateExam = asyncHandler(async (req, res) => {
         exam.status = req.body.status || exam.status;
 
         // Content updates
-        exam.overview = req.body.overview || exam.overview;
-        exam.jobRole = req.body.jobRole || exam.jobRole;
-        exam.postingDepartments = req.body.postingDepartments || exam.postingDepartments;
-        exam.careerGrowth = req.body.careerGrowth || exam.careerGrowth;
-        exam.salaryScale = req.body.salaryScale || exam.salaryScale;
-        exam.eligibilityDetails = req.body.eligibilityDetails || exam.eligibilityDetails;
-        exam.examPattern = req.body.examPattern || exam.examPattern;
-        exam.syllabusSubjectWise = req.body.syllabusSubjectWise || exam.syllabusSubjectWise;
+        exam.overview = req.body.overview !== undefined ? req.body.overview : exam.overview;
+        exam.syllabus = req.body.syllabus !== undefined ? req.body.syllabus : exam.syllabus;
+        exam.updates = req.body.updates !== undefined ? req.body.updates : exam.updates;
+        exam.documents = req.body.documents !== undefined ? req.body.documents : exam.documents;
+        exam.previousYearPapers = req.body.previousYearPapers !== undefined ? req.body.previousYearPapers : exam.previousYearPapers;
+        exam.modelPapers = req.body.modelPapers !== undefined ? req.body.modelPapers : exam.modelPapers;
+        exam.communities = req.body.communities !== undefined ? req.body.communities : exam.communities;
+        exam.mentors = req.body.mentors !== undefined ? req.body.mentors : exam.mentors;
+
+        exam.jobRole = req.body.jobRole !== undefined ? req.body.jobRole : exam.jobRole;
+        exam.salaryScale = req.body.salaryScale !== undefined ? req.body.salaryScale : exam.salaryScale;
+        exam.eligibilityDetails = req.body.eligibilityDetails !== undefined ? req.body.eligibilityDetails : exam.eligibilityDetails;
+        exam.examPattern = req.body.examPattern !== undefined ? req.body.examPattern : exam.examPattern;
+        exam.syllabusSubjectWise = req.body.syllabusSubjectWise !== undefined ? req.body.syllabusSubjectWise : exam.syllabusSubjectWise;
 
         // Branding
         if (req.body.officialPartnerAcademy !== undefined) {
@@ -175,6 +197,21 @@ const addDocument = asyncHandler(async (req, res) => {
     res.status(201).json(document);
 });
 
+// @desc    Delete Official Document
+// @route   DELETE /api/admin/exams/documents/:id
+// @access  Private/Admin
+const deleteDocument = asyncHandler(async (req, res) => {
+    const document = await ExamDocument.findById(req.params.docId);
+
+    if (document) {
+        await document.deleteOne();
+        res.json({ message: 'Document removed' });
+    } else {
+        res.status(404);
+        throw new Error('Document not found');
+    }
+});
+
 // @desc    Link Mentor/Academy to Exam
 // @route   PUT /api/admin/exams/:id/link
 // @access  Private/Admin
@@ -222,12 +259,39 @@ const getExamAnalytics = asyncHandler(async (req, res) => {
     });
 });
 
+// @desc    Delete Exam
+// @route   DELETE /api/admin/exams/:id
+// @access  Private/Admin
+const deleteExam = asyncHandler(async (req, res) => {
+    const exam = await Exam.findById(req.params.id);
+
+    if (exam) {
+        // Delete related data
+        await ExamJobUpdate.deleteMany({ exam: exam._id });
+        await ExamDocument.deleteMany({ exam: exam._id });
+
+        // Remove from users' preferences
+        await User.updateMany(
+            { preferredExams: exam._id },
+            { $pull: { preferredExams: exam._id } }
+        );
+
+        await exam.deleteOne();
+        res.json({ message: 'Exam removed successfully' });
+    } else {
+        res.status(404);
+        throw new Error('Exam not found');
+    }
+});
+
 module.exports = {
     createExam,
     updateExam,
     getExams,
+    deleteExam,
     addJobUpdate,
     addDocument,
+    deleteDocument,
     linkMentorAcademy,
     getExamAnalytics,
     getVerifiedAcademies

@@ -12,13 +12,11 @@ const dailyNewspaperSchema = new mongoose.Schema({
         default: Date.now
     },
     fileUrl: {
-        type: String,
-        required: true
+        type: String
     },
     fileType: {
         type: String,
-        enum: ['pdf', 'image'],
-        required: true
+        enum: ['pdf', 'image']
     },
     thumbnailUrl: {
         type: String // For PDF first page preview
@@ -35,7 +33,20 @@ const dailyNewspaperSchema = new mongoose.Schema({
     views: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User'
-    }]
+    }],
+    summary: { // AI Generated Summary
+        type: String,
+        trim: true
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+        index: true
+    },
+    aiAnalysis: { // Store raw AI response or metadata
+        type: mongoose.Schema.Types.Mixed
+    }
 }, {
     timestamps: true
 });

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { FiCheckCircle, FiClock, FiUsers, FiCalendar, FiPlay, FiRotateCcw } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 
 export default function WordPathAdminPage() {
     const { user } = useAuth();
@@ -22,14 +23,14 @@ export default function WordPathAdminPage() {
         setLoading(true);
         try {
             // Fetch candidates
-            const candRes = await fetch('http://localhost:5000/api/word-path/candidates', {
+            const candRes = await fetch(`${API_BASE_URL}/api/word-path/candidates`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const candData = await candRes.json();
             if (candRes.ok) setCandidates(candData.candidates || []);
 
             // Fetch stats
-            const statsRes = await fetch('http://localhost:5000/api/word-path/stats', {
+            const statsRes = await fetch(`${API_BASE_URL}/api/word-path/stats`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const statsData = await statsRes.ok ? await statsRes.json() : null;
@@ -45,7 +46,7 @@ export default function WordPathAdminPage() {
         if (!confirm('Are you sure you want to activate this word for today?')) return;
         setSelecting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/word-path/select', {
+            const res = await fetch(`${API_BASE_URL}/api/word-path/select`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ export default function WordPathAdminPage() {
         if (!confirm('Reset today\'s puzzle? All attempts and progress will be deleted.')) return;
         setReseting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/word-path/daily', {
+            const res = await fetch(`${API_BASE_URL}/api/word-path/daily`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });

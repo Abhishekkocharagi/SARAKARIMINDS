@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 export default function ResetPassword() {
     const { t } = useLanguage();
@@ -26,7 +27,7 @@ export default function ResetPassword() {
 
     const verifyToken = async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/auth/verify-reset-token/${token}`);
+            const res = await fetch(`${API_BASE_URL}/api/auth/verify-reset-token/${token}`);
             const data = await res.json();
 
             if (res.ok) {
@@ -62,7 +63,7 @@ export default function ResetPassword() {
         setLoading(true);
 
         try {
-            const res = await fetch(`http://localhost:5000/api/auth/reset-password/${token}`, {
+            const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ password })

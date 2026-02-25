@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface User {
     _id: string;
@@ -26,7 +27,7 @@ export default function AdminUsers() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/users', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${currentUser?.token}` }
             });
             if (res.ok) {
@@ -44,7 +45,7 @@ export default function AdminUsers() {
         const action = isBlocked ? 'unblock' : 'block';
         if (!confirm(`Are you sure you want to ${action} this user?`)) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/users/${action}/${userId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/users/${action}/${userId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${currentUser?.token}`
@@ -111,9 +112,9 @@ export default function AdminUsers() {
                                 </td>
                                 <td className="px-8 py-6">
                                     <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${u.role === 'admin' ? 'bg-red-100 text-red-700' :
-                                            u.role === 'mentor' ? 'bg-blue-100 text-blue-700' :
-                                                u.role === 'academy' ? 'bg-purple-100 text-purple-700' :
-                                                    'bg-gray-100 text-gray-700'
+                                        u.role === 'mentor' ? 'bg-blue-100 text-blue-700' :
+                                            u.role === 'academy' ? 'bg-purple-100 text-purple-700' :
+                                                'bg-gray-100 text-gray-700'
                                         }`}>
                                         {u.role}
                                     </span>
@@ -126,8 +127,8 @@ export default function AdminUsers() {
                                         <button
                                             onClick={() => handleBlockAction(u._id, !!u.isBlocked)}
                                             className={`font-black text-[10px] uppercase tracking-widest px-4 py-2 rounded-xl transition ${u.isBlocked
-                                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                    : 'bg-red-50 text-red-600 hover:bg-red-100'
+                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                                : 'bg-red-50 text-red-600 hover:bg-red-100'
                                                 }`}
                                         >
                                             {u.isBlocked ? '🔓 Unblock' : '🚫 Block'}

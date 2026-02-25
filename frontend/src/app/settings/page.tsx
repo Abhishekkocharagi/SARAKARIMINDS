@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
+import { API_BASE_URL } from '@/config';
 
 interface Exam {
     _id: string;
@@ -44,7 +45,7 @@ export default function SettingsPage() {
     React.useEffect(() => {
         const fetchUserPrefs = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/users/profile', {
+                const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
                     headers: { 'Authorization': `Bearer ${user?.token}` }
                 });
                 if (res.ok) {
@@ -61,7 +62,7 @@ export default function SettingsPage() {
     React.useEffect(() => {
         const fetchExams = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/exams');
+                const res = await fetch(`${API_BASE_URL}/api/exams`);
                 if (res.ok) setAllExams(await res.json());
             } catch (err) { console.error(err); }
         };
@@ -82,7 +83,7 @@ export default function SettingsPage() {
         setIsSaving(true);
 
         try {
-            const res = await fetch('http://localhost:5000/api/users/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ export default function SettingsPage() {
             formData.append('expertise', mentorForm.expertise);
             formData.append('document', fileInput.files[0]);
 
-            const res = await fetch('http://localhost:5000/api/users/apply-mentor', {
+            const res = await fetch(`${API_BASE_URL}/api/users/apply-mentor`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user.token}`
@@ -171,7 +172,7 @@ export default function SettingsPage() {
             formData.append('description', academyForm.description);
             formData.append('document', fileInput.files[0]);
 
-            const res = await fetch('http://localhost:5000/api/users/apply-academy', {
+            const res = await fetch(`${API_BASE_URL}/api/users/apply-academy`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user.token}`
@@ -197,9 +198,7 @@ export default function SettingsPage() {
         <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
             <main className="max-w-7xl mx-auto pt-6 px-6 pb-10 flex flex-col md:flex-row gap-6">
-                <div className="hidden md:block w-[280px] shrink-0">
-                    <Sidebar />
-                </div>
+                <Sidebar />
 
                 <div className="flex-1 space-y-6">
                     <div className="bg-white rounded-[2.5rem] border shadow-sm overflow-hidden">
@@ -316,7 +315,7 @@ export default function SettingsPage() {
                                                 }
 
                                                 try {
-                                                    const res = await fetch('http://localhost:5000/api/users/change-password', {
+                                                    const res = await fetch(`${API_BASE_URL}/api/users/change-password`, {
                                                         method: 'PUT',
                                                         headers: {
                                                             'Content-Type': 'application/json',
@@ -387,7 +386,7 @@ export default function SettingsPage() {
                                                 const password = formData.get('password') as string;
 
                                                 try {
-                                                    const res = await fetch('http://localhost:5000/api/users/change-email', {
+                                                    const res = await fetch(`${API_BASE_URL}/api/users/change-email`, {
                                                         method: 'PUT',
                                                         headers: {
                                                             'Content-Type': 'application/json',
@@ -460,7 +459,7 @@ export default function SettingsPage() {
                                                     if (!password) return;
 
                                                     try {
-                                                        const res = await fetch('http://localhost:5000/api/users/delete-account', {
+                                                        const res = await fetch(`${API_BASE_URL}/api/users/delete-account`, {
                                                             method: 'DELETE',
                                                             headers: {
                                                                 'Content-Type': 'application/json',
@@ -509,7 +508,7 @@ export default function SettingsPage() {
                                                     const newValue = !profileData.receiveAllNotifications;
                                                     setProfileData({ ...profileData, receiveAllNotifications: newValue });
                                                     try {
-                                                        await fetch('http://localhost:5000/api/users/profile', {
+                                                        await fetch(`${API_BASE_URL}/api/users/profile`, {
                                                             method: 'PUT',
                                                             headers: {
                                                                 'Content-Type': 'application/json',
@@ -545,7 +544,7 @@ export default function SettingsPage() {
                                                         const newPrefs = { ...notificationPrefs, [n.key]: !notificationPrefs[n.key] };
                                                         setNotificationPrefs(newPrefs);
                                                         try {
-                                                            const res = await fetch('http://localhost:5000/api/users/notification-preferences', {
+                                                            const res = await fetch(`${API_BASE_URL}/api/users/notification-preferences`, {
                                                                 method: 'PUT',
                                                                 headers: {
                                                                     'Content-Type': 'application/json',

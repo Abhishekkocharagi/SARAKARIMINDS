@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 export default function AdminDailyNewspaperPage() {
     const { user } = useAuth();
@@ -17,7 +18,9 @@ export default function AdminDailyNewspaperPage() {
         name: '',
         date: new Date().toISOString().split('T')[0],
         fileType: 'pdf' as 'pdf' | 'image',
-        thumbnailUrl: ''
+        thumbnailUrl: '',
+        summary: '',
+        status: 'approved' as 'pending' | 'approved' | 'rejected'
     });
 
     useEffect(() => {
@@ -26,7 +29,7 @@ export default function AdminDailyNewspaperPage() {
 
     const fetchNewspapers = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/daily-newspapers/admin/all', {
+            const res = await fetch(`${API_BASE_URL}/api/daily-newspapers/admin/all`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -45,17 +48,23 @@ export default function AdminDailyNewspaperPage() {
 
         try {
             const url = editingNewspaper
-                ? `http://localhost:5000/api/daily-newspapers/admin/${editingNewspaper._id}`
-                : 'http://localhost:5000/api/daily-newspapers/admin';
+                ? `${API_BASE_URL}/api/daily-newspapers/admin/${editingNewspaper._id}`
+                : `${API_BASE_URL}/api/daily-newspapers/admin`;
 
             const method = editingNewspaper ? 'PUT' : 'POST';
 
             const data = new FormData();
             data.append('name', formData.name);
             data.append('date', formData.date);
-            data.append('fileType', formData.fileType);
+            data.append('summary', formData.summary);
+            data.append('status', formData.status);
+            data.append('isVisible', 'true');
+
+            if (selectedFile) {
+                data.append('file', selectedFile);
+                data.append('fileType', formData.fileType);
+            }
             if (formData.thumbnailUrl) data.append('thumbnailUrl', formData.thumbnailUrl);
-            if (selectedFile) data.append('file', selectedFile);
 
             const res = await fetch(url, {
                 method,
@@ -68,48 +77,32 @@ export default function AdminDailyNewspaperPage() {
             if (res.ok) {
                 await fetchNewspapers();
                 handleCloseModal();
-                alert(editingNewspaper ? 'Newspaper updated successfully!' : 'Newspaper created successfully!');
+                alert(editingNewspaper ? 'News updated successfully!' : 'News entry created!');
             } else {
                 const errorData = await res.json();
-                alert(errorData.message || 'Failed to save newspaper');
+                alert(errorData.message || 'Failed to save news');
             }
         } catch (error) {
-            console.error('Error saving newspaper:', error);
-            alert('Error saving newspaper');
+            console.error('Error saving news:', error);
+            alert('Error saving news');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this newspaper?')) return;
+        if (!confirm('Are you sure you want to delete this news entry?')) return;
 
         try {
-            const res = await fetch(`http://localhost:5000/api/daily-newspapers/admin/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/daily-newspapers/admin/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
 
             if (res.ok) {
                 await fetchNewspapers();
-                alert('Newspaper deleted successfully!');
+                alert('Deleted successfully!');
             }
         } catch (error) {
-            console.error('Error deleting newspaper:', error);
-            alert('Error deleting newspaper');
-        }
-    };
-
-    const handleToggleVisibility = async (id: string) => {
-        try {
-            const res = await fetch(`http://localhost:5000/api/daily-newspapers/admin/${id}/toggle-visibility`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${user?.token}` }
-            });
-
-            if (res.ok) {
-                await fetchNewspapers();
-            }
-        } catch (error) {
-            console.error('Error toggling visibility:', error);
+            console.error('Error deleting:', error);
         }
     };
 
@@ -118,10 +111,12 @@ export default function AdminDailyNewspaperPage() {
         setFormData({
             name: newspaper.name,
             date: new Date(newspaper.date).toISOString().split('T')[0],
-            fileType: newspaper.fileType,
-            thumbnailUrl: newspaper.thumbnailUrl || ''
+            fileType: newspaper.fileType || 'pdf',
+            thumbnailUrl: newspaper.thumbnailUrl || '',
+            summary: newspaper.summary || '',
+            status: newspaper.status || 'approved'
         });
-        setPreviewUrl(newspaper.fileType === 'pdf' ? newspaper.thumbnailUrl : newspaper.fileUrl);
+        setPreviewUrl(newspaper.fileUrl || '');
         setIsModalOpen(true);
     };
 
@@ -133,7 +128,9 @@ export default function AdminDailyNewspaperPage() {
             name: '',
             date: new Date().toISOString().split('T')[0],
             fileType: 'pdf',
-            thumbnailUrl: ''
+            thumbnailUrl: '',
+            summary: '',
+            status: 'approved'
         });
         setPreviewUrl('');
     };
@@ -148,7 +145,7 @@ export default function AdminDailyNewspaperPage() {
                 reader.onload = (e) => setPreviewUrl(e.target?.result as string);
                 reader.readAsDataURL(file);
                 setFormData(prev => ({ ...prev, fileType: 'image' }));
-            } else if (file.type === 'application/pdf') {
+            } else {
                 setFormData(prev => ({ ...prev, fileType: 'pdf' }));
                 setPreviewUrl('');
             }
@@ -172,107 +169,74 @@ export default function AdminDailyNewspaperPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="bg-white p-8 rounded-3xl shadow-sm border flex flex-col md:flex-row justify-between items-center gap-6">
                 <div>
-                    <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight">📰 Daily Newspaper</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage daily newspapers for students</p>
+                    <h1 className="text-3xl font-black text-gray-900 uppercase tracking-tight flex items-center gap-3">
+                        <span className="text-4xl">🗞️</span> Exam News Manager
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1 font-medium">Post topic-wise summarized news for government exams</p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg"
+                    className="px-8 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-blue-600 transition-all shadow-xl hover:-translate-y-1 active:scale-95"
                 >
-                    + Add Newspaper
+                    + Post New Summary
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border">
-                    <p className="text-sm text-gray-500 font-bold uppercase">Total Newspapers</p>
-                    <p className="text-3xl font-black text-gray-900 mt-2">{newspapers.length}</p>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border">
-                    <p className="text-sm text-gray-500 font-bold uppercase">Visible</p>
-                    <p className="text-3xl font-black text-green-600 mt-2">
-                        {newspapers.filter(n => n.isVisible).length}
-                    </p>
-                </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border">
-                    <p className="text-sm text-gray-500 font-bold uppercase">Hidden</p>
-                    <p className="text-3xl font-black text-gray-400 mt-2">
-                        {newspapers.filter(n => !n.isVisible).length}
-                    </p>
-                </div>
-            </div>
-
-            {/* Newspapers Table */}
-            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            {/* List Table */}
+            <div className="bg-white rounded-3xl shadow-sm border overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead className="bg-gray-50 border-b">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Preview</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Type</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Views</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-left text-xs font-black text-gray-500 uppercase tracking-wider">Actions</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">News Topic / Name</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Date</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Content Status</th>
+                                <th className="px-6 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Attachments</th>
+                                <th className="px-6 py-5 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-gray-100">
                             {newspapers.map((newspaper) => (
-                                <tr key={newspaper._id} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-6 py-4">
-                                        <div className="w-16 h-20 bg-gray-100 rounded overflow-hidden">
-                                            {newspaper.fileType === 'image' ? (
-                                                <img src={newspaper.fileUrl} alt={newspaper.name} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-2xl">📄</div>
-                                            )}
-                                        </div>
-                                    </td>
+                                <tr key={newspaper._id} className="hover:bg-gray-50/50 transition-colors">
                                     <td className="px-6 py-4">
                                         <p className="font-bold text-gray-900">{newspaper.name}</p>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <p className="text-sm text-gray-600">{formatDate(newspaper.date)}</p>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-tight">{formatDate(newspaper.date)}</p>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${newspaper.fileType === 'pdf' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {newspaper.fileType}
+                                        <span className="px-3 py-1 bg-green-50 text-green-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-green-100">
+                                            {newspaper.summary ? 'Summary Written' : 'Empty'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <p className="text-sm text-gray-600">{newspaper.views?.length || 0}</p>
+                                        {newspaper.fileUrl ? (
+                                            <span className="text-[10px] font-black text-blue-500 uppercase flex items-center gap-1">
+                                                📎 {newspaper.fileType.toUpperCase()}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] font-black text-gray-300 uppercase">None</span>
+                                        )}
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <button
-                                            onClick={() => handleToggleVisibility(newspaper._id)}
-                                            className={`px-3 py-1 rounded-full text-xs font-bold uppercase transition-all ${newspaper.isVisible
-                                                ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                                                }`}
-                                        >
-                                            {newspaper.isVisible ? '👁️ Visible' : '🚫 Hidden'}
-                                        </button>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex gap-2">
+                                    <td className="px-6 py-4 text-right">
+                                        <div className="flex gap-2 justify-end">
                                             <button
                                                 onClick={() => handleEdit(newspaper)}
-                                                className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold hover:bg-blue-200 transition-all"
+                                                className="w-9 h-9 flex items-center justify-center bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-900 hover:text-white transition-all"
+                                                title="Edit"
                                             >
-                                                Edit
+                                                ✏️
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(newspaper._id)}
-                                                className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-all"
+                                                className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                                title="Delete"
                                             >
-                                                Delete
+                                                🗑️
                                             </button>
                                         </div>
                                     </td>
@@ -280,156 +244,94 @@ export default function AdminDailyNewspaperPage() {
                             ))}
                         </tbody>
                     </table>
-                    {newspapers.length === 0 && (
-                        <div className="text-center py-12 text-gray-400">
-                            <p className="text-4xl mb-4">📰</p>
-                            <p className="font-bold">No newspapers yet</p>
-                            <p className="text-sm mt-1">Click "Add Newspaper" to create one</p>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Add/Edit Modal */}
+            {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl">
-                        <div className="p-8 border-b flex justify-between items-center bg-gray-50">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] w-full max-w-5xl overflow-hidden shadow-2xl max-h-[92vh] flex flex-col border border-white/20 scale-in-center">
+                        <div className="p-8 border-b flex justify-between items-center bg-gray-50/50">
                             <div>
                                 <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">
-                                    {editingNewspaper ? 'Edit Newspaper' : 'Add New Newspaper'}
+                                    {editingNewspaper ? 'Edit News Summary' : 'Post New News Summary'}
                                 </h2>
-                                <p className="text-xs text-gray-400 font-bold uppercase mt-1">
-                                    Upload PDF or Image files
+                                <p className="text-xs text-gray-400 font-bold uppercase mt-1 tracking-widest">
+                                    Format your news with topics for students
                                 </p>
                             </div>
-                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600 text-2xl">✕</button>
+                            <button onClick={handleCloseModal} className="w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-red-500 hover:text-white rounded-full transition-all duration-300">✕</button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Left Column - Form */}
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            Newspaper Name *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="e.g., The Hindu - Karnataka Edition"
-                                            className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            Date *
-                                        </label>
-                                        <input
-                                            type="date"
-                                            value={formData.date}
-                                            onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            File Type *
-                                        </label>
-                                        <select
-                                            value={formData.fileType}
-                                            onChange={(e) => setFormData({ ...formData, fileType: e.target.value as 'pdf' | 'image' })}
-                                            className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                        >
-                                            <option value="pdf">PDF</option>
-                                            <option value="image">Image (JPG/PNG)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            Newspaper File *
-                                        </label>
-                                        <input
-                                            type="file"
-                                            onChange={handleFileChange}
-                                            accept=".pdf,image/*"
-                                            className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                                            required={!editingNewspaper}
-                                        />
-                                        <p className="text-[10px] text-gray-400 mt-2 font-bold uppercase tracking-widest">
-                                            UPLOAD PDF OR IMAGE DIRECTLY
-                                        </p>
-                                    </div>
-
-                                    {formData.fileType === 'pdf' && (
-                                        <div>
-                                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                                Thumbnail URL (Optional)
-                                            </label>
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                {/* Form Fields */}
+                                <div className="lg:col-span-12 space-y-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Headline / Name</label>
                                             <input
-                                                type="url"
-                                                value={formData.thumbnailUrl}
-                                                onChange={(e) => {
-                                                    setFormData({ ...formData, thumbnailUrl: e.target.value });
-                                                    setPreviewUrl(e.target.value);
-                                                }}
-                                                placeholder="https://example.com/thumbnail.jpg"
-                                                className="w-full px-4 py-3 bg-gray-50 border rounded-xl font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                                                type="text"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                placeholder="e.g., Daily Exam News - Dec 10"
+                                                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold text-gray-900 outline-none transition-all placeholder:text-gray-300"
+                                                required
                                             />
-                                            <p className="text-xs text-gray-400 mt-1 italic">
-                                                First page preview image for PDF
-                                            </p>
                                         </div>
-                                    )}
-                                </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Date of News</label>
+                                            <input
+                                                type="date"
+                                                value={formData.date}
+                                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                className="w-full px-6 py-4 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-2xl font-bold text-gray-900 outline-none transition-all"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
 
-                                {/* Right Column - Preview */}
-                                <div className="bg-gray-50 rounded-xl p-6 flex flex-col items-center justify-center">
-                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Live Preview</p>
-                                    {previewUrl ? (
-                                        <div className="w-full h-96 bg-white rounded-xl overflow-hidden shadow-lg">
-                                            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
-                                        </div>
-                                    ) : formData.fileType === 'pdf' ? (
-                                        <div className="w-full h-96 bg-white rounded-xl flex items-center justify-center text-gray-300">
-                                            <div className="text-center">
-                                                <p className="text-6xl mb-4">📄</p>
-                                                <p className="text-sm font-bold">PDF Preview</p>
-                                                <p className="text-xs mt-1">Add thumbnail URL to see preview</p>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Summarized News (Topic-Wise)</label>
+                                        <p className="text-[10px] text-blue-500 font-bold uppercase mb-2">Tip: Use # for Topics and * for Bullted points</p>
+                                        <textarea
+                                            value={formData.summary}
+                                            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                                            placeholder={`Example:\n# NATIONAL AFFAIRS\n* Government launches new scheme...\n\n# ECONOMY\n* RBI maintains repo rate...`}
+                                            className="w-full h-96 px-6 py-6 bg-gray-50 border-2 border-transparent focus:border-blue-500 focus:bg-white rounded-[2rem] font-medium text-gray-700 outline-none transition-all resize-none shadow-inner leading-relaxed text-lg"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Optional PDF/Image Upload</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="file"
+                                                    onChange={handleFileChange}
+                                                    accept=".pdf,image/*"
+                                                    className="w-full px-6 py-4 bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl font-bold text-gray-500 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all"
+                                                />
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="w-full h-96 bg-white rounded-xl flex items-center justify-center text-gray-300">
-                                            <div className="text-center">
-                                                <p className="text-6xl mb-4">🖼️</p>
-                                                <p className="text-sm font-bold">Image Preview</p>
-                                                <p className="text-xs mt-1">Add file URL to see preview</p>
-                                            </div>
+                                        <div className="flex gap-4">
+                                            <button
+                                                type="submit"
+                                                className="flex-1 px-8 py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-black transition-all shadow-xl shadow-blue-200"
+                                            >
+                                                {editingNewspaper ? 'Update Content' : 'Publish to Website'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleCloseModal}
+                                                className="px-8 py-5 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-red-50 hover:text-red-500 transition-all"
+                                            >
+                                                Discard
+                                            </button>
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div className="flex gap-4 mt-8 pt-6 border-t">
-                                <button
-                                    type="submit"
-                                    className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-xl font-black uppercase text-sm tracking-widest hover:bg-blue-700 transition-all shadow-xl"
-                                >
-                                    {editingNewspaper ? 'Update Newspaper' : 'Create Newspaper'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCloseModal}
-                                    className="px-6 py-4 bg-gray-100 text-gray-600 rounded-xl font-black uppercase text-sm tracking-widest hover:bg-gray-200 transition-all"
-                                >
-                                    Cancel
-                                </button>
                             </div>
                         </form>
                     </div>

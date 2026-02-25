@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { translations, Language, TranslationKey } from '../translations';
 import { useAuth } from './AuthContext';
+import { API_BASE_URL } from '../config';
 
 interface LanguageContextType {
     language: Language;
@@ -18,11 +19,15 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
 
     // Initialize language from localStorage or User profile
     useEffect(() => {
-        const storedLang = localStorage.getItem('language') as Language;
-        if (user?.language) {
-            setLanguageState(user.language as Language);
-        } else if (storedLang) {
-            setLanguageState(storedLang);
+        const storedLang = localStorage.getItem('language');
+        const userLang = user?.language;
+
+        const langToSet = (userLang || storedLang) as string;
+
+        if (langToSet === 'kn') {
+            setLanguageState('kn');
+        } else {
+            setLanguageState('en');
         }
     }, [user]);
 
@@ -33,7 +38,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
         if (user) {
             // Update on backend if logged in
             try {
-                const res = await fetch('http://localhost:5000/api/users/profile', {
+                const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

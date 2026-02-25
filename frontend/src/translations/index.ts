@@ -41,6 +41,10 @@ export const translations = {
     "sidebar.following": { "en": "Following", "kn": "ಅನುಸರಿಸುತ್ತಿರುವುದು", "hi": "अनुसरण कर रहे हैं" },
     "sidebar.language": { "en": "Language", "kn": "ಭಾಷೆ", "hi": "भाषा" },
     "sidebar.aspirant": { "en": "Aspirant", "kn": "ಅಭ್ಯರ್ಥಿ", "hi": "आकांक्षी" },
+    "sidebar.feed": { "en": "Feed", "kn": "ಫೀಡ್", "hi": "फ़ीड" },
+    "sidebar.network": { "en": "Network", "kn": "ನೆಟ್‌ವರ್ಕ್", "hi": "नेटवर्क" },
+    "sidebar.settings": { "en": "Settings", "kn": "ಸೆಟ್ಟಿಂಗ್‌ಗಳು", "hi": "सेटिंग्स" },
+    "sidebar.logout": { "en": "Logout", "kn": "ಲಾಗ್ ಔಟ್", "hi": "लॉग आउट" },
     "sidebar.quiz": { "en": "Daily Quiz", "kn": "ದೈನಂದಿನ ರಸಪ್ರಶ್ನೆ", "hi": "दैनिक प्रश्नोत्तरी" },
     "sidebar.games": { "en": "Games", "kn": "ಆಟಗಳು", "hi": "खेल" },
     "jilebi.not_ready": { "en": "Today's puzzle is not ready yet.", "kn": "ಇಂದಿನ ಪಜಲ್ ಇನ್ನೂ ಸಿದ್ಧವಾಗಿಲ್ಲ." },
@@ -52,6 +56,10 @@ export const translations = {
     "jilebi.correct": { "en": "Perfect!", "kn": "ಅದ್ಭುತ!" },
     "jilebi.wrong": { "en": "Try Again Tomorrow", "kn": "ನಾಳೆ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ" },
     "jilebi.explanation": { "en": "How to Decode", "kn": "ಡಿಕೋಡ್ ಮಾಡುವುದು ಹೇಗೆ" },
+    "jilebi.quote": { "en": "There is no greater power than knowledge", "kn": "ಜ್ಞಾನಕ್ಕಿಂತ ದೊಡ್ಡ ಶಕ್ತಿ ಇನ್ನಾವುದೂ ಇಲ್ಲ" },
+    "jilebi.arrange_order": { "en": "Arrange in order (Drag to Order)", "kn": "ಕ್ರಮಬದ್ಧವಾಗಿ ಜೋಡಿಸಿ (Drag to Order)" },
+    "jilebi.correct_ans": { "en": "Correct Answer:", "kn": "ಸರಿಯಾದ ಉತ್ತರ:" },
+    "jilebi.congrats": { "en": "Congratulations! Today's challenge is complete", "kn": "ಅಭಿನಂದನೆಗಳು! ಇಂದಿನ ಸವಾಲು ಪೂರ್ಣಗೊಂಡಿದೆ" },
     "quiz.title": { "en": "Daily Quiz", "kn": "ದೈನಂದಿನ ರಸಪ್ರಶ್ನೆ" },
     "quiz.subtitle": { "en": "Test your preparation across all subjects", "kn": "ಎಲ್ಲಾ ವಿಷಯಗಳಲ್ಲಿ ನಿಮ್ಮ ತಯಾರಿಯನ್ನು ಪರೀಕ್ಷಿಸಿ" },
     "quiz.total_score": { "en": "Total Score", "kn": "ಒಟ್ಟು ಅಂಕಗಳು" },
@@ -191,6 +199,8 @@ export const translations = {
     "common.save": { "en": "Save", "kn": "ಉಳಿಸಿ" },
     "common.cancel": { "en": "Cancel", "kn": "ರದ್ದುಮಾಡಿ" },
     "common.no_posts": { "en": "No posts yet. Be the first to share an update!", "kn": "ಇನ್ನೂ ಯಾವುದೇ ಪೋಸ್ಟ್‌ಗಳಿಲ್ಲ. ನವೀಕರಣವನ್ನು ಹಂಚಿಕೊಳ್ಳುವವರಲ್ಲಿ ಮೊದಲಿಗರಾಗಿರಿ!" },
+    "common.load_more": { "en": "Load More Posts", "kn": "ಹೆಚ್ಚಿನ ಪೋಸ್ಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಿ", "hi": "और पोस्ट लोड करें" },
+    "common.no_more_posts": { "en": "You've reached the end of the feed!", "kn": "ನೀವು ಫೀಡ್‌ನ ಅಂತ್ಯವನ್ನು ತಲುಪಿದ್ದೀರಿ!", "hi": "आप फ़ीड के अंत तक पहुँच गए हैं!" },
     "time.ago": { "en": "ago", "kn": "ಹಿಂದೆ" },
     "time.y": { "en": "y", "kn": "ವರ್ಷ" },
     "time.mo": { "en": "mo", "kn": "ತಿಂಗಳು" },
@@ -461,6 +471,7 @@ export const translations = {
     "sidebar.job_updates": { "en": "Job Updates", "kn": "ಉದ್ಯೋಗ ಮಾಹಿತಿ", "hi": "नौकरी अपडेट" },
     "sidebar.exam_hub": { "en": "Exam Hub", "kn": "ಪರೀಕ್ಷಾ ಕೇಂದ್ರ", "hi": "परीक्षा हब" },
     "sidebar.current_affairs": { "en": "Current Affairs", "kn": "ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು", "hi": "करंट अफेयर्स" },
+    "sidebar.topic_of_the_day": { "en": "Topic of the Day", "kn": "ದಿನದ ವಿಷಯ", "hi": "आज का विषय" },
     "sidebar.online": { "en": "Online", "kn": "ಆನ್‌ಲೈನ್", "hi": "ऑनलाइन" },
 
     // Games Page
@@ -475,6 +486,17 @@ export const translations = {
     "games.coming_soon": { "en": "Coming Soon", "kn": "ಶೀಘ್ರದಲ್ಲೇ ಲಭ್ಯ" },
     "games.word_path_title": { "en": "Word Path Challenge", "kn": "ವರ್ಡ್ ಪಾಥ್ ಚಾಲೆಂಜ್" },
     "games.word_path_desc": { "en": "Trace the path of words between letters", "kn": "ಅಕ್ಷರಗಳ ನಡುವೆ ಪದದ ಹಾದಿಯನ್ನು ಪತ್ತೆಹಚ್ಚಿ" },
+    "wordpath.not_ready": { "en": "Today's challenge is being prepared by the Mentor. Check back shortly!", "kn": "ಇಂದಿನ ಸವಾಲನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ. ಸ್ವಲ್ಪ ಸಮಯದ ನಂತರ ಪರಿಶೀಲಿಸಿ!" },
+    "wordpath.legend": { "en": "Sequential Legend (Out Box)", "kn": "ಅನುಕ್ರಮ ವಿವರಣೆ (ಹೊರಗಿನ ಬಾಕ್ಸ್)" },
+    "wordpath.path_len": { "en": "Path Length:", "kn": "ಮಾರ್ಗದ ಉದ್ದ:" },
+    "wordpath.instructions": { "en": "Instructions", "kn": "ಸೂಚನೆಗಳು" },
+    "wordpath.submit": { "en": "Submit Path", "kn": "ಮಾರ್ಗವನ್ನು ಸಲ್ಲಿಸಿ" },
+    "wordpath.undo": { "en": "Undo Move", "kn": "ಹಿಂದಿನ ನಡೆ ರದ್ದುಗೊಳಿಸಿ" },
+    "wordpath.reset": { "en": "Reset Grid", "kn": "ಗ್ರಿಡ್ ಮರುಹೊಂದಿಸಿ" },
+    "wordpath.deciphered": { "en": "Deciphered Word", "kn": "ಪತ್ತೆಹಚ್ಚಿದ ಪದ" },
+    "wordpath.meaning": { "en": "Meaning & Insight", "kn": "ಅರ್ಥ ಮತ್ತು ಒಳನೋಟ" },
+    "wordpath.close": { "en": "Close Definition", "kn": "ವ್ಯಾಖ್ಯಾನವನ್ನು ಮುಚ್ಚಿ" },
+    "wordpath.loading": { "en": "Generating Your Daily Word Path...", "kn": "ನಿಮ್ಮ ದೈನಂದಿನ ವರ್ಡ್ ಪಾಥ್ ರಚಿಸಲಾಗುತ್ತಿದೆ..." },
 
     // Current Affairs Page
     "ca.title": { "en": "Current Affairs", "kn": "ಪ್ರಚಲಿತ ವಿದ್ಯಮಾನಗಳು" },
@@ -495,15 +517,18 @@ export const translations = {
     "ca.cat.international": { "en": "International", "kn": "ಅಂತರರಾಷ್ಟ್ರೀಯ" },
     "ca.cat.economy": { "en": "Economy", "kn": "ಆರ್ಥಿಕತೆ" },
     "ca.cat.science": { "en": "Science & Tech", "kn": "ವಿಜ್ಞಾನ ಮತ್ತು ತಂತ್ರಜ್ಞಾನ" },
-    "ca.cat.polity": { "en": "Polity", "kn": "ರಾಜ್ಯಶಾಸ್ತ್ರ" },
-    "ca.cat.sports": { "en": "Sports", "kn": "ಕ್ರೀಡೆ" },
-    "ca.cat.awards": { "en": "Awards", "kn": "ಪ್ರಶಸ್ತಿಗಳು" },
-    "ca.cat.appointments": { "en": "Appointments", "kn": "ನೇಮಕಾತಿಗಳು" },
+    "ca.cat.polity": { "en": "Polity", "kn": "ರಾಜ್ಯಶಾಸ್ತ್ರ", "hi": "राजव्यवस्था" },
+    "ca.cat.sports": { "en": "Sports", "kn": "ಕ್ರೀಡೆ", "hi": "खेल" },
+    "ca.cat.awards": { "en": "Awards", "kn": "ಪ್ರಶಸ್ತಿಗಳು", "hi": "पुरस्कार" },
+    "ca.cat.appointments": { "en": "Appointments", "kn": "ನೇಮಕಾತಿಗಳು", "hi": "नियुक्तियां" },
+    "ca.cat.environment": { "en": "Environment", "kn": "ಪರಿಸರ", "hi": "पर्यावरण" },
+    "ca.cat.schemes": { "en": "Govt Schemes", "kn": "ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು", "hi": "सरकारी योजनाएं" },
+    "ca.cat.misc": { "en": "Miscellaneous", "kn": "ಇತರೆ", "hi": "विविಧ" },
 
     "nav.privacy": { "en": "Privacy", "kn": "ಗೌಪ್ಯತೆ" },
     "nav.terms": { "en": "Terms", "kn": "ನಿಯಮಗಳು" },
     "nav.about": { "en": "Our Story", "kn": "ನಮ್ಮ ಕಥೆ" },
-    "nav.contact": { "en": "Contact", "kn": "ಸಂಪರ್ಕಿಸಿ" }
+    "nav.contact": { "en": "Contact", "kn": "ಸಂಪರ್ಕಿಸಿ", "hi": "संपर्क करें" }
 };
 
 export type Language = 'en' | 'kn' | 'hi';

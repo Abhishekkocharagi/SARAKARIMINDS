@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { API_BASE_URL } from '@/config';
 
 interface JobUpdate {
     _id: string;
@@ -24,7 +25,7 @@ export default function JobUpdatesPage() {
     useEffect(() => {
         const fetchJobs = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/jobs');
+                const res = await fetch(`${API_BASE_URL}/api/jobs`);
                 if (res.ok) {
                     const data = await res.json();
                     setJobs(data);

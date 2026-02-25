@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 
 interface ExamNews {
     _id: string;
@@ -35,7 +36,7 @@ export default function AdminExamNews() {
 
     const fetchNews = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/exam-news/all', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exam-news/all`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {
@@ -52,8 +53,8 @@ export default function AdminExamNews() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const url = editingItem
-            ? `http://localhost:5000/api/admin/exam-news/${editingItem._id}`
-            : 'http://localhost:5000/api/admin/exam-news';
+            ? `${API_BASE_URL}/api/admin/exam-news/${editingItem._id}`
+            : `${API_BASE_URL}/api/admin/exam-news`;
         const method = editingItem ? 'PUT' : 'POST';
 
         const payload = {
@@ -85,7 +86,7 @@ export default function AdminExamNews() {
     const deleteNews = async (id: string) => {
         if (!confirm('Are you sure you want to delete this news item?')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/exam-news/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/exam-news/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });

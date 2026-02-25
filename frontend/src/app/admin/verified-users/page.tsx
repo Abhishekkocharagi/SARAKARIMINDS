@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 interface VerifiedUser {
     _id: string;
@@ -23,7 +24,7 @@ export default function VerifiedUsersPage() {
 
     const fetchVerifiedUsers = useCallback(async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/admin/verified-users', {
+            const res = await fetch(`${API_BASE_URL}/api/admin/verified-users`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             if (res.ok) {

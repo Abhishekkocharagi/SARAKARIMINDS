@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useParams, useRouter } from 'next/navigation';
+import { API_BASE_URL } from '@/config';
 
 interface User {
     _id: string;
@@ -64,7 +65,7 @@ export default function VerifiedUserDetailsPage() {
 
     const fetchUserDetails = useCallback(async () => {
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/verified-users/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/verified-users/${id}`, {
                 headers: { 'Authorization': `Bearer ${adminUser?.token}` }
             });
             if (res.ok) {
@@ -92,7 +93,7 @@ export default function VerifiedUserDetailsPage() {
 
         setRevoking(true);
         try {
-            const res = await fetch(`http://localhost:5000/api/admin/verified-users/revoke/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/admin/verified-users/revoke/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

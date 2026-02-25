@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE_URL } from '@/config';
 
 export default function MentorDashboard() {
     const { user, updateUser, loading: authLoading } = useAuth();
@@ -40,7 +41,7 @@ export default function MentorDashboard() {
     const refreshUserProfile = async () => {
         if (!user) return;
         try {
-            const res = await fetch('http://localhost:5000/api/users/profile', {
+            const res = await fetch(`${API_BASE_URL}/api/users/profile`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
             if (res.ok) {
@@ -53,7 +54,7 @@ export default function MentorDashboard() {
     const fetchStats = async () => {
         if (!user) return;
         try {
-            const res = await fetch('http://localhost:5000/api/mentor/stats', {
+            const res = await fetch(`${API_BASE_URL}/api/mentor/stats`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
             if (res.ok) {
@@ -70,7 +71,7 @@ export default function MentorDashboard() {
         try {
             // Reusing getMentorGroups but filtering for my own ID
             if (!user._id) return;
-            const res = await fetch(`http://localhost:5000/api/groups/mentor/${user._id}`, {
+            const res = await fetch(`${API_BASE_URL}/api/groups/mentor/${user._id}`, {
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });
             if (res.ok) {
@@ -93,7 +94,7 @@ export default function MentorDashboard() {
             formData.append('examCategory', newGroup.examCategory);
             if (qrFile) formData.append('paymentQrImage', qrFile);
 
-            const res = await fetch('http://localhost:5000/api/groups', {
+            const res = await fetch(`${API_BASE_URL}/api/groups`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${user.token}`
@@ -117,7 +118,7 @@ export default function MentorDashboard() {
         e.preventDefault();
         if (!user) return;
         try {
-            const res = await fetch('http://localhost:5000/api/mentor/settings', {
+            const res = await fetch(`${API_BASE_URL}/api/mentor/settings`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -137,7 +138,7 @@ export default function MentorDashboard() {
         if (!user) return;
         if (!confirm('Are you sure you want to delete this community? All posts and memberships will be removed.')) return;
         try {
-            const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${user.token}` }
             });

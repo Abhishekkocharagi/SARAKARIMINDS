@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { NavigationProvider } from '@/context/NavigationContext';
 
 const outfit = Outfit({ subsets: ['latin'] });
 
@@ -21,7 +22,11 @@ export default function RootLayout({
             <body className={outfit.className} suppressHydrationWarning>
                 <AuthProvider>
                     <LanguageProvider>
-                        {children}
+                        <NavigationProvider>
+                            <div className="pb-20 md:pb-0">
+                                {children}
+                            </div>
+                        </NavigationProvider>
                     </LanguageProvider>
                 </AuthProvider>
             </body>

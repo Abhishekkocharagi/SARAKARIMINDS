@@ -41,11 +41,18 @@ const examSchema = mongoose.Schema({
         default: 'active'
     },
 
-    // Detailed Content
+    // Detailed Content (Admin Managed)
     overview: { type: String, default: '' },
+    syllabus: { type: String, default: '' },
+    updates: { type: String, default: '' },
+    documents: { type: String, default: '' },
+    previousYearPapers: { type: String, default: '' },
+    modelPapers: { type: String, default: '' },
+    communities: { type: String, default: '' },
+    mentors: { type: String, default: '' },
+
+    // Legacy/Metadata
     jobRole: { type: String, default: '' },
-    postingDepartments: { type: String, default: '' },
-    careerGrowth: { type: String, default: '' },
     salaryScale: { type: String, default: '' },
     eligibilityDetails: { type: String, default: '' },
     examPattern: { type: String, default: '' },
@@ -76,7 +83,7 @@ const examSchema = mongoose.Schema({
         default: ''
     },
 
-    // Analytics (Cached or managed via controller)
+    // Analytics
     aspirantCount: { type: Number, default: 0 },
     activeUserCount: { type: Number, default: 0 }
 

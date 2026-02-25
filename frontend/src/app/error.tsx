@@ -10,31 +10,35 @@ export default function Error({
     reset: () => void;
 }) {
     useEffect(() => {
-        console.error(error);
+        console.error('Root Error:', error);
     }, [error]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-            <div className="bg-white p-10 rounded-[40px] shadow-2xl max-w-lg w-full text-center border border-gray-100">
-                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-4xl mb-6 mx-auto">⚠️</div>
-                <h2 className="text-3xl font-black text-gray-900 mb-2">Something went wrong!</h2>
-                <p className="text-gray-500 font-medium mb-8">
-                    {error.message || "An unexpected error occurred while rendering this page."}
-                </p>
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => window.location.href = '/'}
-                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-black py-4 rounded-2xl transition uppercase text-xs tracking-widest"
-                    >
-                        Go Home
-                    </button>
-                    <button
-                        onClick={() => reset()}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition shadow-lg shadow-blue-600/20 uppercase text-xs tracking-widest"
-                    >
-                        Try again
-                    </button>
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-white">
+            <h2 className="text-2xl font-bold mb-4 text-gray-900 tracking-tight italic uppercase italic transform -rotate-1">Something went wrong!</h2>
+            <p className="text-gray-500 mb-8 text-center max-w-md font-medium">
+                {error.message?.includes('Loading chunk')
+                    ? 'A connection issue occurred while loading this page. This often happens if the dev server was restarted or there are multiple servers running on different ports.'
+                    : (error.message || 'An unexpected error occurred. Please try again or go back home.')}
+            </p>
+            {error.message?.includes('Loading chunk') && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-xl text-blue-700 text-xs font-bold leading-relaxed border border-blue-100">
+                    💡 <strong>Tip:</strong> Try a hard refresh (<strong>Ctrl + Shift + R</strong>) or stop all terminals and run <code>npm run dev</code> again.
                 </div>
+            )}
+            <div className="flex gap-4">
+                <button
+                    onClick={() => window.location.href = '/'}
+                    className="px-8 py-3 bg-gray-100 text-gray-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-gray-200 transition"
+                >
+                    Go Home
+                </button>
+                <button
+                    onClick={() => reset()}
+                    className="px-8 py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-600/20"
+                >
+                    Try again
+                </button>
             </div>
         </div>
     );

@@ -2,12 +2,14 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/User');
 const Exam = require('../models/Exam');
 const generateToken = require('../utils/generateToken');
+const { emitAdminEvent } = require('../socket');
 
 // @desc    Register a new user
 // @route   POST /api/users
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password, accountType, exams, mobile } = req.body;
+    let { name, email, password, accountType, exams, mobile } = req.body;
+    email = email.toLowerCase();
 
     const userExists = await User.findOne({ email });
 
@@ -34,6 +36,12 @@ const registerUser = asyncHandler(async (req, res) => {
     });
 
     if (user) {
+        emitAdminEvent('NEW_USER', {
+            id: user._id,
+            name: user.name,
+            email: user.email
+        });
+
         // Streak Reset Logic
         const now = new Date();
         const yesterday = new Date(now);
@@ -96,7 +104,8 @@ const registerUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users/login
 // @access  Public
 const authUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.toLowerCase();
 
     const user = await User.findOne({ email }).populate('preferredExams', 'name fullName category');
 

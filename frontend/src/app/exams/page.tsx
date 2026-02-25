@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import Sidebar from '@/components/Sidebar';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 import Link from 'next/link';
 
 interface Exam {
@@ -30,7 +31,7 @@ export default function ExamsHub() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/exams');
+            const res = await fetch(`${API_BASE_URL}/api/exams`);
             if (res.ok) {
                 const data = await res.json();
                 setExams(data);
@@ -55,7 +56,7 @@ export default function ExamsHub() {
 
         // setSaving(true);
         try {
-            const res = await fetch('http://localhost:5000/api/exams/select', {
+            const res = await fetch(`${API_BASE_URL}/api/exams/select`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -135,9 +136,7 @@ export default function ExamsHub() {
         <div className="min-h-screen bg-[#F3F2EF]">
             <Navbar />
             <main className="max-w-7xl mx-auto px-6 pt-6 pb-10 flex flex-col md:flex-row gap-6">
-                <div className="hidden md:block w-[280px] shrink-0">
-                    <Sidebar />
-                </div>
+                <Sidebar />
 
                 <div className="flex-1 min-w-0 space-y-8">
                     {/* Search Bar */}

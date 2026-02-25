@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { API_BASE_URL } from '@/config';
 import { useLanguage } from '@/context/LanguageContext';
 import { FiArrowLeft, FiCheck, FiAward, FiBookOpen, FiActivity } from 'react-icons/fi';
 
@@ -30,7 +31,7 @@ export default function MentorRegister() {
         setLoading(true);
         try {
             const token = localStorage.getItem('token');
-            const res = await fetch('http://localhost:5000/api/users/apply-mentor', {
+            const res = await fetch(`${API_BASE_URL}/api/users/apply-mentor`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

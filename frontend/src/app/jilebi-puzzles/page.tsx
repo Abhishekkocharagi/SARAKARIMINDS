@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { FiCheckCircle, FiInfo, FiChevronRight, FiZap, FiX, FiArrowLeft } from 'react-icons/fi';
+import { API_BASE_URL } from '@/config';
 
 interface Jilebi {
     _id: string;
@@ -38,7 +39,7 @@ export default function JilebiPage() {
 
     const fetchTodayJilebi = async () => {
         try {
-            const res = await fetch('http://localhost:5000/api/jilebi/today', {
+            const res = await fetch(`${API_BASE_URL}/api/jilebi/today`, {
                 headers: { 'Authorization': `Bearer ${user?.token}` }
             });
             const data = await res.json();
@@ -86,7 +87,7 @@ export default function JilebiPage() {
 
         setSubmitting(true);
         try {
-            const res = await fetch('http://localhost:5000/api/jilebi/submit', {
+            const res = await fetch(`${API_BASE_URL}/api/jilebi/submit`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export default function JilebiPage() {
                 <div className="text-8xl">🧩</div>
                 <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{errorMsg || t('jilebi.not_ready')}</h2>
                 <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 italic text-amber-900 font-bold shadow-sm">
-                    "ಜ್ಞಾನಕ್ಕಿಂತ ದೊಡ್ಡ ಶಕ್ತಿ ಇನ್ನಾವುದೂ ಇಲ್ಲ"
+                    "{t('jilebi.quote')}"
                 </div>
             </div>
         );
@@ -221,7 +222,7 @@ export default function JilebiPage() {
                                             </div>
                                         ))}
                                     </div>
-                                    <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 py-2 rounded-full mx-auto max-w-xs border">ಕ್ರಮಬದ್ಧವಾಗಿ ಜೋಡಿಸಿ (Drag to Order)</p>
+                                    <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 py-2 rounded-full mx-auto max-w-xs border">{t('jilebi.arrange_order')}</p>
                                 </div>
                             )}
 
@@ -246,7 +247,7 @@ export default function JilebiPage() {
                                     {currentPuzzle.attemptStatus === 'correct' ? t('jilebi.correct') : t('jilebi.wrong')}
                                 </h3>
                                 {currentPuzzle.attemptStatus === 'wrong' && (
-                                    <p className="text-amber-900 font-black text-lg">ಸರಿಯಾದ ಉತ್ತರ: <span className="bg-amber-600 text-white px-4 py-1 rounded-xl ml-2 shadow-sm">{Array.isArray(currentPuzzle.correctAnswer) ? currentPuzzle.correctAnswer.join(' → ') : currentPuzzle.correctAnswer}</span></p>
+                                    <p className="text-amber-900 font-black text-lg">{t('jilebi.correct_ans')} <span className="bg-amber-600 text-white px-4 py-1 rounded-xl ml-2 shadow-sm">{Array.isArray(currentPuzzle.correctAnswer) ? currentPuzzle.correctAnswer.join(' → ') : currentPuzzle.correctAnswer}</span></p>
                                 )}
                             </div>
 
@@ -262,7 +263,7 @@ export default function JilebiPage() {
 
                             <div className="text-center pt-4">
                                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-8 py-3 border rounded-full bg-gray-50 shadow-sm">
-                                    ಅಭಿನಂದನೆಗಳು! ಇಂದಿನ ಸವಾಲು ಪೂರ್ಣಗೊಂಡಿದೆ
+                                    {t('jilebi.congrats')}
                                 </span>
                             </div>
                         </div>
